@@ -62,3 +62,9 @@ Thumbs.db
 
 # Sensitive documentation (maintainer-only content)
 MAINTAINER_MANUAL.md
+
+
+.api_key
+CLAUDE.md
+Caddyfile
+start_wazuh_mcp.sh

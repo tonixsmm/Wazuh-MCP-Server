@@ -31,7 +31,13 @@ services:
       MCP_PORT: 3000
       ENVIRONMENT: production
       # Authentication mode: oauth (recommended), bearer (default), none (dev only)
-      AUTH_MODE: ${AUTH_MODE:-bearer}
+      # AUTH_MODE: ${AUTH_MODE:-bearer}
+      WAZUH_HOST: "https://192.168.65.254"
+      WAZUH_PORT: "15500"
+      WAZUH_USER: "wazuh"
+      WAZUH_PASS: "Wm+kW7qOXwVyQ6gOUjBJ.hXC5zvD?4Pp"
+      WAZUH_VERIFY_SSL: "false"
+      AUTH_MODE: "none"
       
     ports:
       - "${MCP_PORT:-3000}:3000"

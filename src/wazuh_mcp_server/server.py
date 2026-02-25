@@ -428,7 +428,7 @@ async def handle_initialize(params: Dict[str, Any], session: MCPSession) -> Dict
     }
 
 async def handle_tools_list(params: Dict[str, Any], session: MCPSession) -> Dict[str, Any]:
-    """Handle tools/list method - All 29 Wazuh Security Tools."""
+    """Handle tools/list method - All 30 Wazuh Security Tools."""
     tools = [
         # Alert Management Tools (4 tools)
         {
@@ -756,8 +756,26 @@ async def handle_tools_list(params: Dict[str, Any], session: MCPSession) -> Dict
             "name": "validate_wazuh_connection",
             "description": "Validate connection to Wazuh server and return status",
             "inputSchema": {
-                "type": "object", 
+                "type": "object",
                 "properties": {},
+                "required": []
+            }
+        },
+
+        # Incident Investigation Tool (1 tool)
+        {
+            "name": "build_incident_timeline",
+            "description": "Build a unified incident timeline by correlating Wazuh alerts and manager logs into a single chronologically-sorted view. All parameters are optional for flexible investigation.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {"type": "string", "description": "Filter by agent ID"},
+                    "rule_id": {"type": "string", "description": "Filter by rule ID"},
+                    "query": {"type": "string", "description": "Search query for manager logs"},
+                    "level": {"type": "string", "description": "Filter by severity level"},
+                    "time_range": {"type": "string", "enum": ["1h", "6h", "24h", "7d"], "default": "24h", "description": "Time range to search"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 200, "description": "Maximum number of timeline entries"}
+                },
                 "required": []
             }
         }
@@ -766,7 +784,7 @@ async def handle_tools_list(params: Dict[str, Any], session: MCPSession) -> Dict
     return {"tools": tools}
 
 async def handle_tools_call(params: Dict[str, Any], session: MCPSession) -> Dict[str, Any]:
-    """Handle tools/call method - All 29 Wazuh Security Tools."""
+    """Handle tools/call method - All 30 Wazuh Security Tools."""
     tool_name = params.get("name")
     arguments = params.get("arguments", {})
     
@@ -942,6 +960,17 @@ async def handle_tools_call(params: Dict[str, Any], session: MCPSession) -> Dict
         elif tool_name == "validate_wazuh_connection":
             result = await wazuh_client.validate_connection()
             return {"content": [{"type": "text", "text": f"Connection Validation:\n{json.dumps(result, indent=2)}"}]}
+
+        elif tool_name == "build_incident_timeline":
+            result = await wazuh_client.build_incident_timeline(
+                agent_id=arguments.get("agent_id"),
+                rule_id=arguments.get("rule_id"),
+                query=arguments.get("query"),
+                level=arguments.get("level"),
+                time_range=arguments.get("time_range", "24h"),
+                limit=arguments.get("limit", 200),
+            )
+            return {"content": [{"type": "text", "text": f"Incident Timeline:\n{json.dumps(result, indent=2)}"}]}
 
         else:
             raise ValueError(f"Unknown tool: {tool_name}")

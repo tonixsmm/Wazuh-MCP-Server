@@ -3,7 +3,8 @@
 import asyncio
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from datetime import datetime, timezone, timedelta
 import httpx
 import logging
 
@@ -491,6 +492,127 @@ class WazuhClient:
         except Exception as e:
             return {"status": "failed", "error": str(e)}
     
+    async def build_incident_timeline(
+        self,
+        agent_id: str = None,
+        rule_id: str = None,
+        query: str = None,
+        level: str = None,
+        time_range: str = "24h",
+        limit: int = 200,
+    ) -> Dict[str, Any]:
+        """Build a unified incident timeline by correlating alerts and manager logs.
+
+        Makes two concurrent API calls (alerts + manager logs), normalizes
+        the results into a common format, and returns them sorted by timestamp.
+        If one call fails the other's results are still returned.
+        """
+        # Convert time_range to ISO timestamps
+        now = datetime.now(timezone.utc)
+        range_map = {"1h": 1, "6h": 6, "24h": 24, "7d": 168}
+        hours = range_map.get(time_range, 24)
+        start_time = now - timedelta(hours=hours)
+
+        start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Build params for each API call
+        alert_params: Dict[str, Any] = {
+            "timestamp_start": start_iso,
+            "timestamp_end": end_iso,
+            "limit": limit,
+        }
+        if agent_id:
+            alert_params["agent_id"] = agent_id
+        if rule_id:
+            alert_params["rule_id"] = rule_id
+        if level:
+            alert_params["level"] = level
+
+        log_params: Dict[str, Any] = {"limit": limit}
+        if query:
+            log_params["q"] = query
+        if level:
+            log_params["level"] = level
+
+        # Concurrent API calls with graceful degradation
+        alert_result, log_result = await asyncio.gather(
+            self._request("GET", "/alerts", params=alert_params),
+            self._request("GET", "/manager/logs", params=log_params),
+            return_exceptions=True,
+        )
+
+        timeline: List[Dict[str, Any]] = []
+        alert_count = 0
+        log_count = 0
+        errors: List[str] = []
+
+        # Process alerts
+        if isinstance(alert_result, Exception):
+            errors.append(f"Alerts fetch failed: {alert_result}")
+        else:
+            items = alert_result.get("data", {}).get("affected_items", [])
+            for item in items:
+                timeline.append({
+                    "timestamp": item.get("timestamp", ""),
+                    "source_type": "alert",
+                    "severity": str(item.get("rule", {}).get("level", "")),
+                    "description": item.get("rule", {}).get("description", ""),
+                    "rule_id": str(item.get("rule", {}).get("id", "")),
+                    "rule_groups": item.get("rule", {}).get("groups", []),
+                    "agent_id": str(item.get("agent", {}).get("id", "")),
+                    "agent_name": item.get("agent", {}).get("name", ""),
+                    "tag": "alert",
+                })
+            alert_count = len(items)
+
+        # Process manager logs
+        if isinstance(log_result, Exception):
+            errors.append(f"Logs fetch failed: {log_result}")
+        else:
+            items = log_result.get("data", {}).get("affected_items", [])
+            for item in items:
+                timeline.append({
+                    "timestamp": item.get("timestamp", ""),
+                    "source_type": "log",
+                    "severity": item.get("level", ""),
+                    "description": item.get("description", item.get("message", "")),
+                    "rule_id": "",
+                    "rule_groups": [],
+                    "agent_id": "",
+                    "agent_name": "",
+                    "tag": item.get("tag", "manager"),
+                })
+            log_count = len(items)
+
+        # Sort by timestamp descending and trim to limit
+        timeline.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
+        timeline = timeline[:limit]
+
+        filters_applied = {}
+        if agent_id:
+            filters_applied["agent_id"] = agent_id
+        if rule_id:
+            filters_applied["rule_id"] = rule_id
+        if query:
+            filters_applied["query"] = query
+        if level:
+            filters_applied["level"] = level
+
+        summary = {
+            "total_events": len(timeline),
+            "alert_count": alert_count,
+            "log_count": log_count,
+            "time_range": time_range,
+            "start_time": start_iso,
+            "end_time": end_iso,
+            "filters_applied": filters_applied,
+        }
+        if errors:
+            summary["errors"] = errors
+
+        return {"data": {"timeline": timeline, "summary": summary}}
+
     async def close(self):
         """Close the HTTP client and indexer client."""
         if self.client:
