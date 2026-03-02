@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sys
 import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone, timedelta
@@ -95,7 +96,7 @@ class WazuhClient:
                 raise ValueError("Invalid authentication response from Wazuh API")
             
             self.token = data["data"]["token"]
-            print(f"✅ Authenticated with Wazuh server at {self.config.wazuh_host}")
+            print(f"✅ Authenticated with Wazuh server at {self.config.wazuh_host}", file=sys.stderr)
             
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh server at {self.config.wazuh_host}:{self.config.wazuh_port}")
@@ -275,7 +276,7 @@ class WazuhClient:
             sleep_time = 60 - (current_time - oldest_request_time)
             
             if sleep_time > 0:
-                print(f"⚠️ Rate limit reached ({self._max_requests_per_minute}/min). Waiting {sleep_time:.1f}s...")
+                print(f"⚠️ Rate limit reached ({self._max_requests_per_minute}/min). Waiting {sleep_time:.1f}s...", file=sys.stderr)
                 await asyncio.sleep(sleep_time)
                 
                 # Clean up expired requests after waiting
