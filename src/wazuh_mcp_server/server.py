@@ -280,8 +280,15 @@ wazuh_config = WazuhConfig(
     wazuh_user=config.WAZUH_USER,
     wazuh_pass=config.WAZUH_PASS,
     wazuh_port=config.WAZUH_PORT,
-    verify_ssl=config.WAZUH_VERIFY_SSL
+    verify_ssl=config.WAZUH_VERIFY_SSL,
+    wazuh_indexer_host=os.getenv("WAZUH_INDEXER_HOST"),
+    wazuh_indexer_port=int(os.getenv("WAZUH_INDEXER_PORT", "9200")),
+    wazuh_indexer_user=os.getenv("WAZUH_INDEXER_USER"),
+    wazuh_indexer_pass=os.getenv("WAZUH_INDEXER_PASS")
 )
+print(wazuh_config)
+
+# wazuh_config = WazuhConfig.from_env()
 
 # Initialize Wazuh client
 wazuh_client = WazuhClient(wazuh_config)

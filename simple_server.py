@@ -112,14 +112,15 @@ async def get_wazuh_alerts(
         level: Filter alerts by severity level (e.g. "10" or "10-15" for a range).
         agent_id: Filter alerts by agent ID.
     """
-    params: dict = {"limit": limit}
-    if rule_id is not None:
-        params["rule.id"] = rule_id
-    if level is not None:
-        params["level"] = level
-    if agent_id is not None:
-        params["agent.id"] = agent_id
-    result = await _client().get_alerts(**params)
+    c = _client()
+    if c._indexer_client is None:
+        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
+    result = await c._indexer_client.get_alerts(
+        limit=limit,
+        rule_id=rule_id,
+        level=level,
+        agent_id=agent_id,
+    )
     return json.dumps(result, indent=2)
 
 
@@ -134,7 +135,10 @@ async def get_wazuh_alert_summary(
         time_range: Time window to summarise (e.g. "1h", "24h", "7d").
         group_by: Field to group results by (default "rule.description").
     """
-    result = await _client().get_alert_summary(time_range=time_range, group_by=group_by)
+    c = _client()
+    if c._indexer_client is None:
+        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
+    result = await c._indexer_client.get_alert_summary(time_range=time_range, group_by=group_by)
     return json.dumps(result, indent=2)
 
 
@@ -149,7 +153,10 @@ async def analyze_alert_patterns(
         time_range: Time window to analyze (e.g. "1h", "24h", "7d").
         min_frequency: Minimum number of occurrences for a pattern to be included.
     """
-    result = await _client().analyze_alert_patterns(
+    c = _client()
+    if c._indexer_client is None:
+        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
+    result = await c._indexer_client.analyze_alert_patterns(
         time_range=time_range,
         min_frequency=min_frequency,
     )
@@ -165,11 +172,14 @@ async def search_security_events(
     """Full-text search across Wazuh security events.
 
     Args:
-        query: Search query string (supports Wazuh query syntax).
+        query: Search query string (Lucene/OpenSearch syntax supported).
         time_range: Time window to search within (e.g. "1h", "24h", "7d").
         limit: Maximum number of results to return.
     """
-    result = await _client().search_security_events(
+    c = _client()
+    if c._indexer_client is None:
+        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
+    result = await c._indexer_client.search_security_events(
         query=query,
         time_range=time_range,
         limit=limit,

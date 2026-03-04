@@ -1,4 +1,21 @@
-"""Wazuh API client optimized for Wazuh 4.8.0 to 4.14.1 compatibility with latest features."""
+"""Wazuh API client optimized for Wazuh 4.8.0 to 4.14.x compatibility.
+
+Fixes applied vs original:
+- get_wazuh_statistics      → GET /manager/stats (was /manager/stats/all - fake)
+- get_cluster_health        → GET /cluster/status (was /cluster/health - fake)
+- get_cluster_nodes         → GET /cluster/nodes/info (was /cluster/nodes - wrong)
+- get_rules_summary         → GET /rules aggregation (was /rules/summary - fake)
+- get_log_collector_stats   → GET /manager/stats/remoted (was /manager/stats/logcollector - fake)
+- analyze_security_threat   → Indexer: search_security_events (was /security/threat/analyze - fake)
+- check_ioc_reputation      → Indexer: search alerts + vulns (was /security/ioc/reputation - fake)
+- perform_risk_assessment   → Indexer: aggregate alerts+vulns by agent (was /security/risk - fake)
+- get_top_security_threats  → Indexer: get_alert_summary (was /security/threats/top - fake)
+- generate_security_report  → Indexer: multi-query aggregate (was /security/reports/generate - fake)
+- run_compliance_check      → Indexer: compliance-tagged alert search (was /security/compliance/check - fake)
+- get_alert_summary         → Indexer: get_alert_summary (was /alerts/summary - fake)
+- analyze_alert_patterns    → Indexer: analyze_alert_patterns (was /alerts/patterns - fake)
+- search_security_events    → Indexer: search_security_events (was /security/events - fake)
+"""
 
 import asyncio
 import json
@@ -24,19 +41,17 @@ logger = logging.getLogger(__name__)
 
 
 class WazuhClient:
-    """Simplified Wazuh API client with rate limiting, circuit breaker, and retry logic."""
+    """Wazuh API client with rate limiting, circuit breaker, and retry logic."""
 
     def __init__(self, config: WazuhConfig):
         self.config = config
         self.token: Optional[str] = None
         self.client: Optional[httpx.AsyncClient] = None
-        # Rate limiting
         self._rate_limiter = asyncio.Semaphore(config.max_connections)
         self._request_times = []
         self._max_requests_per_minute = getattr(config, 'max_requests_per_minute', 100)
         self._rate_limit_enabled = True
 
-        # Circuit breaker for API resilience
         circuit_config = CircuitBreakerConfig(
             failure_threshold=5,
             recovery_timeout=60,
@@ -44,7 +59,6 @@ class WazuhClient:
         )
         self._circuit_breaker = CircuitBreaker(circuit_config)
 
-        # Initialize Wazuh Indexer client if configured (required for Wazuh 4.8.0+)
         self._indexer_client: Optional[WazuhIndexerClient] = None
         if config.wazuh_indexer_host:
             self._indexer_client = WazuhIndexerClient(
@@ -56,14 +70,19 @@ class WazuhClient:
                 timeout=config.request_timeout_seconds
             )
             logger.info(f"WazuhIndexerClient configured for {config.wazuh_indexer_host}:{config.wazuh_indexer_port}")
+            print(f"✅ Wazuh Indexer client configured for {config.wazuh_indexer_host}:{config.wazuh_indexer_port}", file=sys.stderr)
         else:
             logger.warning(
-                "Wazuh Indexer not configured. Vulnerability tools will not work with Wazuh 4.8.0+. "
-                "Set WAZUH_INDEXER_HOST to enable vulnerability queries."
+                "Wazuh Indexer not configured. Vulnerability and analytics tools will not work. "
+                "Set WAZUH_INDEXER_HOST to enable."
             )
 
-        logger.info("WazuhClient initialized with circuit breaker and retry logic")
-    
+    def _require_indexer(self) -> WazuhIndexerClient:
+        """Return indexer client or raise a clean error."""
+        if not self._indexer_client:
+            raise IndexerNotConfiguredError()
+        return self._indexer_client
+
     async def initialize(self):
         """Initialize the HTTP client and authenticate."""
         self.client = httpx.AsyncClient(
@@ -72,32 +91,27 @@ class WazuhClient:
         )
         await self._authenticate()
 
-        # Initialize indexer client if configured
         if self._indexer_client:
             try:
                 await self._indexer_client.initialize()
                 logger.info("Wazuh Indexer client initialized successfully")
             except Exception as e:
                 logger.warning(f"Wazuh Indexer initialization failed: {e}")
-    
+
     async def _authenticate(self):
         """Authenticate with Wazuh API."""
         auth_url = f"{self.config.base_url}/security/user/authenticate"
-        
         try:
             response = await self.client.post(
                 auth_url,
                 auth=(self.config.wazuh_user, self.config.wazuh_pass)
             )
             response.raise_for_status()
-            
             data = response.json()
             if "data" not in data or "token" not in data["data"]:
                 raise ValueError("Invalid authentication response from Wazuh API")
-            
             self.token = data["data"]["token"]
             print(f"✅ Authenticated with Wazuh server at {self.config.wazuh_host}", file=sys.stderr)
-            
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh server at {self.config.wazuh_host}:{self.config.wazuh_port}")
         except httpx.TimeoutException:
@@ -109,199 +123,34 @@ class WazuhClient:
                 raise ValueError("Wazuh user does not have sufficient permissions")
             else:
                 raise ValueError(f"Wazuh API error: {e.response.status_code} - {e.response.text}")
-    
-    async def get_alerts(self, **params) -> Dict[str, Any]:
-        """Get alerts from Wazuh."""
-        return await self._request("GET", "/alerts", params=params)
-    
-    async def get_agents(self, **params) -> Dict[str, Any]:
-        """Get agents from Wazuh."""
-        return await self._request("GET", "/agents", params=params)
-    
-    async def get_vulnerabilities(self, **params) -> Dict[str, Any]:
-        """
-        Get vulnerabilities from Wazuh Indexer (4.8.0+ required).
 
-        Note: The /vulnerability API endpoint was deprecated in Wazuh 4.7.0
-        and removed in 4.8.0. Vulnerability data must be queried from the
-        Wazuh Indexer using the wazuh-states-vulnerabilities-* index.
+    # -------------------------------------------------------------------------
+    # Core request machinery
+    # -------------------------------------------------------------------------
 
-        Args:
-            agent_id: Filter by agent ID
-            severity: Filter by severity (critical, high, medium, low)
-            limit: Maximum number of results (default: 100)
-
-        Returns:
-            Vulnerability data from the indexer
-
-        Raises:
-            IndexerNotConfiguredError: If Wazuh Indexer is not configured
-        """
-        if not self._indexer_client:
-            raise IndexerNotConfiguredError()
-
-        agent_id = params.get("agent_id")
-        severity = params.get("severity")
-        limit = params.get("limit", 100)
-
-        return await self._indexer_client.get_vulnerabilities(
-            agent_id=agent_id,
-            severity=severity,
-            limit=limit
-        )
-    
-    async def get_cluster_status(self) -> Dict[str, Any]:
-        """Get cluster status."""
-        return await self._request("GET", "/cluster/status")
-    
-    async def search_logs(self, **params) -> Dict[str, Any]:
-        """Search logs with advanced filtering capabilities."""
-        return await self._request("GET", "/manager/logs", params=params)
-    
-    async def get_incidents(self, **params) -> Dict[str, Any]:
-        """Get security incidents."""
-        return await self._request("GET", "/security/incidents", params=params)
-    
-    async def create_incident(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new security incident."""
-        return await self._request("POST", "/security/incidents", json=data)
-    
-    async def update_incident(self, incident_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update an existing security incident."""
-        return await self._request("PUT", f"/security/incidents/{incident_id}", json=data)
-    
-    async def get_rules(self, **params) -> Dict[str, Any]:
-        """Get Wazuh detection rules."""
-        return await self._request("GET", "/rules", params=params)
-    
-    async def get_rule_info(self, rule_id: str) -> Dict[str, Any]:
-        """Get detailed information about a specific rule."""
-        return await self._request("GET", f"/rules/{rule_id}")
-    
-    async def get_decoders(self, **params) -> Dict[str, Any]:
-        """Get Wazuh log decoders."""
-        return await self._request("GET", "/decoders", params=params)
-    
-    async def execute_active_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute active response command on agents (4.8+ removed 'custom' parameter)."""
-        # Note: 'custom' parameter was removed in Wazuh 4.8.0
-        # Ensure data dict doesn't contain deprecated 'custom' parameter
-        if 'custom' in data:
-            data = {k: v for k, v in data.items() if k != 'custom'}
-        return await self._request("PUT", "/active-response", json=data)
-    
-    async def get_active_response_commands(self, **params) -> Dict[str, Any]:
-        """Get available active response commands."""
-        return await self._request("GET", "/manager/configuration", params={"section": "active-response"})
-    
-    async def get_cdb_lists(self, **params) -> Dict[str, Any]:
-        """Get CDB lists."""
-        return await self._request("GET", "/lists", params=params)
-    
-    async def get_cdb_list_content(self, filename: str) -> Dict[str, Any]:
-        """Get specific CDB list content."""
-        return await self._request("GET", f"/lists/{filename}")
-    
-    async def get_fim_events(self, **params) -> Dict[str, Any]:
-        """Get File Integrity Monitoring events."""
-        return await self._request("GET", "/syscheck", params=params)
-    
-    async def get_syscollector_info(self, agent_id: str, **params) -> Dict[str, Any]:
-        """Get system inventory information from agent."""
-        return await self._request("GET", f"/syscollector/{agent_id}", params=params)
-    
-    async def get_manager_stats(self, **params) -> Dict[str, Any]:
-        """Get manager statistics."""
-        return await self._request("GET", "/manager/stats", params=params)
-    
-    async def get_manager_version_check(self) -> Dict[str, Any]:
-        """Check for new Wazuh releases (4.8+ feature)."""
-        return await self._request("GET", "/manager/version/check")
-    
-    async def get_cti_data(self, cve_id: str) -> Dict[str, Any]:
-        """
-        Get Cyber Threat Intelligence data for CVE (4.8.0+ via Indexer).
-
-        Note: CTI data is now stored in the Wazuh Indexer.
-
-        Args:
-            cve_id: CVE ID to look up (e.g., "CVE-2021-44228")
-
-        Returns:
-            Vulnerability data for the specific CVE
-
-        Raises:
-            IndexerNotConfiguredError: If Wazuh Indexer is not configured
-        """
-        if not self._indexer_client:
-            raise IndexerNotConfiguredError()
-
-        return await self._indexer_client.get_vulnerabilities(cve_id=cve_id, limit=100)
-
-    async def get_vulnerability_details(self, vuln_id: str, **params) -> Dict[str, Any]:
-        """
-        Get detailed vulnerability information (4.8.0+ via Indexer).
-
-        Note: Vulnerability details are now stored in the Wazuh Indexer.
-
-        Args:
-            vuln_id: Vulnerability/CVE ID
-
-        Returns:
-            Detailed vulnerability information
-
-        Raises:
-            IndexerNotConfiguredError: If Wazuh Indexer is not configured
-        """
-        if not self._indexer_client:
-            raise IndexerNotConfiguredError()
-
-        return await self._indexer_client.get_vulnerabilities(cve_id=vuln_id, limit=1)
-    
-    async def get_agent_stats(self, agent_id: str, component: str = "logcollector") -> Dict[str, Any]:
-        """Get agent component statistics."""
-        return await self._request("GET", f"/agents/{agent_id}/stats/{component}")
-    
     async def _rate_limit_check(self):
-        """Check and enforce rate limiting."""
         current_time = time.time()
-        
-        # Remove requests older than 1 minute
         self._request_times = [t for t in self._request_times if current_time - t < 60]
-        
-        # Check if we're hitting the rate limit
         if len(self._request_times) >= self._max_requests_per_minute:
-            # Calculate how long to wait before the oldest request expires
-            oldest_request_time = self._request_times[0]
-            sleep_time = 60 - (current_time - oldest_request_time)
-            
+            oldest = self._request_times[0]
+            sleep_time = 60 - (current_time - oldest)
             if sleep_time > 0:
-                print(f"⚠️ Rate limit reached ({self._max_requests_per_minute}/min). Waiting {sleep_time:.1f}s...", file=sys.stderr)
+                print(f"⚠️ Rate limit reached. Waiting {sleep_time:.1f}s...", file=sys.stderr)
                 await asyncio.sleep(sleep_time)
-                
-                # Clean up expired requests after waiting
                 current_time = time.time()
                 self._request_times = [t for t in self._request_times if current_time - t < 60]
-        
-        # Record this request time
         self._request_times.append(current_time)
 
     async def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
-        """Make authenticated request to Wazuh API with rate limiting, circuit breaker, and retry logic."""
-        # Apply rate limiting
         async with self._rate_limiter:
             await self._rate_limit_check()
-
-            # Apply circuit breaker and retry logic
             return await self._request_with_resilience(method, endpoint, **kwargs)
 
     @RetryConfig.WAZUH_API_RETRY
     async def _request_with_resilience(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
-        """Execute request with circuit breaker and retry logic."""
         return await self._circuit_breaker._call(self._execute_request, method, endpoint, **kwargs)
 
     async def _execute_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
-        """Execute the actual HTTP request to Wazuh API."""
         if not self.token:
             await self._authenticate()
 
@@ -311,21 +160,15 @@ class WazuhClient:
         try:
             response = await self.client.request(method, url, headers=headers, **kwargs)
             response.raise_for_status()
-
             data = response.json()
-
-            # Validate response structure
             if "data" not in data:
                 raise ValueError(f"Invalid response structure from Wazuh API: {endpoint}")
-
             return data
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 401:
-                # Token might be expired, try to re-authenticate
                 self.token = None
                 await self._authenticate()
-                # Retry the request once
                 headers = {"Authorization": f"Bearer {self.token}"}
                 response = await self.client.request(method, url, headers=headers, **kwargs)
                 response.raise_for_status()
@@ -333,166 +176,327 @@ class WazuhClient:
             else:
                 logger.error(f"Wazuh API request failed: {e.response.status_code} - {e.response.text}")
                 raise ValueError(f"Wazuh API request failed: {e.response.status_code} - {e.response.text}")
-        except httpx.ConnectError as e:
-            logger.error(f"Lost connection to Wazuh server at {self.config.wazuh_host}")
+        except httpx.ConnectError:
             raise ConnectionError(f"Lost connection to Wazuh server at {self.config.wazuh_host}")
-        except httpx.TimeoutException as e:
-            logger.error(f"Request timeout to Wazuh server")
+        except httpx.TimeoutException:
             raise ConnectionError(f"Request timeout to Wazuh server")
-    
-    async def get_manager_info(self) -> Dict[str, Any]:
-        """Get Wazuh manager information."""
-        return await self._request("GET", "/")
+
+    # -------------------------------------------------------------------------
+    # Alerts
+    # -------------------------------------------------------------------------
+
+    async def get_alerts(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/alerts", params=params)
 
     async def get_alert_summary(self, time_range: str, group_by: str) -> Dict[str, Any]:
-        """Get alert summary grouped by field."""
-        params = {"time_range": time_range, "group_by": group_by}
-        return await self._request("GET", "/alerts/summary", params=params)
+        """Summarise alerts via Indexer aggregation."""
+        return await self._require_indexer().get_alert_summary(
+            time_range=time_range, group_by=group_by
+        )
 
     async def analyze_alert_patterns(self, time_range: str, min_frequency: int) -> Dict[str, Any]:
-        """Analyze alert patterns."""
-        params = {"time_range": time_range, "min_frequency": min_frequency}
-        return await self._request("GET", "/alerts/patterns", params=params)
+        """Identify recurring alert patterns via Indexer."""
+        return await self._require_indexer().analyze_alert_patterns(
+            time_range=time_range, min_frequency=min_frequency
+        )
 
     async def search_security_events(self, query: str, time_range: str, limit: int) -> Dict[str, Any]:
-        """Search security events."""
-        params = {"q": query, "time_range": time_range, "limit": limit}
-        return await self._request("GET", "/security/events", params=params)
+        """Full-text search across alerts via Indexer."""
+        return await self._require_indexer().search_security_events(
+            query=query, time_range=time_range, limit=limit
+        )
+
+    # -------------------------------------------------------------------------
+    # Agents
+    # -------------------------------------------------------------------------
+
+    async def get_agents(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/agents", params=params)
 
     async def get_running_agents(self) -> Dict[str, Any]:
-        """Get running agents."""
         return await self._request("GET", "/agents", params={"status": "active"})
 
     async def check_agent_health(self, agent_id: str) -> Dict[str, Any]:
-        """Check agent health."""
-        return await self._request("GET", f"/agents/{agent_id}/health")
+        return await self._request("GET", f"/agents", params={"agents_list": agent_id})
 
     async def get_agent_processes(self, agent_id: str, limit: int) -> Dict[str, Any]:
-        """Get agent processes."""
         return await self._request("GET", f"/syscollector/{agent_id}/processes", params={"limit": limit})
 
     async def get_agent_ports(self, agent_id: str, limit: int) -> Dict[str, Any]:
-        """Get agent ports."""
         return await self._request("GET", f"/syscollector/{agent_id}/ports", params={"limit": limit})
 
     async def get_agent_configuration(self, agent_id: str) -> Dict[str, Any]:
-        """Get agent configuration."""
-        return await self._request("GET", f"/agents/{agent_id}/config")
+        return await self._request("GET", f"/agents/{agent_id}/config/client/client")
 
-    async def get_critical_vulnerabilities(self, limit: int) -> Dict[str, Any]:
-        """
-        Get critical vulnerabilities from Wazuh Indexer (4.8.0+ required).
+    # -------------------------------------------------------------------------
+    # Vulnerabilities (Indexer required — Wazuh 4.8.0+)
+    # -------------------------------------------------------------------------
 
-        Args:
-            limit: Maximum number of results
-
-        Returns:
-            Critical vulnerability data from the indexer
-
-        Raises:
-            IndexerNotConfiguredError: If Wazuh Indexer is not configured
-        """
+    async def get_vulnerabilities(self, **params) -> Dict[str, Any]:
         if not self._indexer_client:
             raise IndexerNotConfiguredError()
+        return await self._indexer_client.get_vulnerabilities(
+            agent_id=params.get("agent_id"),
+            severity=params.get("severity"),
+            limit=params.get("limit", 100)
+        )
 
+    async def get_critical_vulnerabilities(self, limit: int) -> Dict[str, Any]:
+        if not self._indexer_client:
+            raise IndexerNotConfiguredError()
         return await self._indexer_client.get_critical_vulnerabilities(limit=limit)
 
     async def get_vulnerability_summary(self, time_range: str) -> Dict[str, Any]:
-        """
-        Get vulnerability summary statistics from Wazuh Indexer (4.8.0+ required).
-
-        Args:
-            time_range: Time range for the summary (currently not used, returns all current vulnerabilities)
-
-        Returns:
-            Vulnerability summary with counts by severity
-
-        Raises:
-            IndexerNotConfiguredError: If Wazuh Indexer is not configured
-        """
         if not self._indexer_client:
             raise IndexerNotConfiguredError()
-
         return await self._indexer_client.get_vulnerability_summary()
 
+    async def get_cti_data(self, cve_id: str) -> Dict[str, Any]:
+        if not self._indexer_client:
+            raise IndexerNotConfiguredError()
+        return await self._indexer_client.get_vulnerabilities(cve_id=cve_id, limit=100)
+
+    # -------------------------------------------------------------------------
+    # Security Analysis (all rebuilt on Indexer — fake Manager endpoints removed)
+    # -------------------------------------------------------------------------
+
     async def analyze_security_threat(self, indicator: str, indicator_type: str) -> Dict[str, Any]:
-        """Analyze security threat."""
-        data = {"indicator": indicator, "type": indicator_type}
-        return await self._request("POST", "/security/threat/analyze", json=data)
+        """Search alerts and vulnerabilities for a given indicator (IP, domain, hash, URL)."""
+        indexer = self._require_indexer()
+        # Search alerts for any mention of the indicator
+        alert_results = await indexer.search_security_events(
+            query=indicator, time_range="7d", limit=50
+        )
+        # Also check vulnerability index if it's a CVE-style hash
+        vuln_results = None
+        if indicator_type == "hash" or indicator.upper().startswith("CVE-"):
+            try:
+                vuln_results = await indexer.get_vulnerabilities(cve_id=indicator, limit=10)
+            except Exception:
+                pass
+
+        return {
+            "indicator": indicator,
+            "indicator_type": indicator_type,
+            "alert_matches": alert_results,
+            "vulnerability_matches": vuln_results,
+        }
 
     async def check_ioc_reputation(self, indicator: str, indicator_type: str) -> Dict[str, Any]:
-        """Check IoC reputation."""
-        params = {"indicator": indicator, "type": indicator_type}
-        return await self._request("GET", "/security/ioc/reputation", params=params)
+        """Check IoC by searching alerts for any events involving the indicator."""
+        indexer = self._require_indexer()
+        results = await indexer.search_security_events(
+            query=indicator, time_range="30d", limit=100
+        )
+        total = results.get("total", 0)
+        return {
+            "indicator": indicator,
+            "indicator_type": indicator_type,
+            "total_alert_hits": total,
+            "reputation": "malicious" if total > 10 else "suspicious" if total > 0 else "clean",
+            "evidence": results.get("results", [])[:10],
+        }
 
     async def perform_risk_assessment(self, agent_id: str = None) -> Dict[str, Any]:
-        """Perform risk assessment."""
-        endpoint = f"/security/risk/{agent_id}" if agent_id else "/security/risk"
-        return await self._request("GET", endpoint)
+        """Assess risk by aggregating alert severity and vulnerability counts per agent."""
+        indexer = self._require_indexer()
+
+        group_by = "agent.name"
+        alert_summary = await indexer.get_alert_summary(time_range="7d", group_by=group_by)
+        vuln_summary = await indexer.get_vulnerability_summary()
+
+        scope = f"agent {agent_id}" if agent_id else "full environment"
+        return {
+            "scope": scope,
+            "assessment_time": datetime.now(timezone.utc).isoformat(),
+            "alert_summary_7d": alert_summary,
+            "vulnerability_summary": vuln_summary,
+        }
 
     async def get_top_security_threats(self, limit: int, time_range: str) -> Dict[str, Any]:
-        """Get top security threats."""
-        params = {"limit": limit, "time_range": time_range}
-        return await self._request("GET", "/security/threats/top", params=params)
+        """Return top threats by alert frequency from the Indexer."""
+        indexer = self._require_indexer()
+        summary = await indexer.get_alert_summary(
+            time_range=time_range, group_by="rule.description"
+        )
+        # Trim to requested limit
+        top = summary.get("top_entries", [])[:limit]
+        return {
+            "time_range": time_range,
+            "limit": limit,
+            "top_threats": top,
+            "by_level": summary.get("by_level", []),
+            "by_agent": summary.get("by_agent", []),
+            "total_alerts": summary.get("total_alerts", 0),
+        }
 
     async def generate_security_report(self, report_type: str, include_recommendations: bool) -> Dict[str, Any]:
-        """Generate security report."""
-        data = {"type": report_type, "include_recommendations": include_recommendations}
-        return await self._request("POST", "/security/reports/generate", json=data)
+        """Generate a security report by aggregating Indexer data."""
+        indexer = self._require_indexer()
+
+        alert_summary, vuln_summary, patterns = await asyncio.gather(
+            indexer.get_alert_summary(time_range="7d", group_by="rule.description"),
+            indexer.get_vulnerability_summary(),
+            indexer.analyze_alert_patterns(time_range="7d", min_frequency=3),
+            return_exceptions=True,
+        )
+
+        report: Dict[str, Any] = {
+            "report_type": report_type,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "period": "7d",
+        }
+
+        if not isinstance(alert_summary, Exception):
+            report["alert_summary"] = alert_summary
+        if not isinstance(vuln_summary, Exception):
+            report["vulnerability_summary"] = vuln_summary
+        if not isinstance(patterns, Exception):
+            report["alert_patterns"] = patterns
+
+        if include_recommendations:
+            recs = []
+            if not isinstance(alert_summary, Exception):
+                total = alert_summary.get("total_alerts", 0)
+                if total > 1000:
+                    recs.append("High alert volume detected — review top recurring rules and consider tuning.")
+            if not isinstance(vuln_summary, Exception):
+                critical = vuln_summary.get("data", {}).get("critical", 0)
+                if critical > 0:
+                    recs.append(f"{critical} critical vulnerabilities detected — prioritize patching.")
+            if not recs:
+                recs.append("No immediate high-priority actions identified.")
+            report["recommendations"] = recs
+
+        return {"data": report}
 
     async def run_compliance_check(self, framework: str, agent_id: str = None) -> Dict[str, Any]:
-        """Run compliance check."""
-        data = {"framework": framework}
+        """Check compliance by searching alerts tagged with the framework."""
+        indexer = self._require_indexer()
+
+        # Map framework names to Wazuh rule group tags
+        framework_tags = {
+            "pci_dss": "pci_dss",
+            "hipaa": "hipaa",
+            "gdpr": "gdpr",
+            "nist": "nist",
+            "cis": "cis",
+        }
+        tag = framework_tags.get(framework.lower(), framework.lower())
+
+        query = f"rule.groups:{tag}"
         if agent_id:
-            data["agent_id"] = agent_id
-        return await self._request("POST", "/security/compliance/check", json=data)
+            query += f" AND agent.id:{agent_id}"
+
+        results = await indexer.search_security_events(
+            query=query, time_range="30d", limit=200
+        )
+        total = results.get("total", 0)
+
+        return {
+            "framework": framework,
+            "agent_id": agent_id,
+            "period": "30d",
+            "total_compliance_events": total,
+            "status": "violations_found" if total > 0 else "clean",
+            "events": results.get("results", [])[:20],
+        }
+
+    # -------------------------------------------------------------------------
+    # System Monitoring (corrected Manager API endpoints)
+    # -------------------------------------------------------------------------
 
     async def get_wazuh_statistics(self) -> Dict[str, Any]:
-        """Get Wazuh statistics."""
-        return await self._request("GET", "/manager/stats/all")
+        """GET /manager/stats — hourly event counts for today."""
+        return await self._request("GET", "/manager/stats")
 
     async def get_weekly_stats(self) -> Dict[str, Any]:
-        """Get weekly statistics."""
+        """GET /manager/stats/weekly — event counts broken down by day/hour."""
         return await self._request("GET", "/manager/stats/weekly")
 
     async def get_cluster_health(self) -> Dict[str, Any]:
-        """Get cluster health."""
-        return await self._request("GET", "/cluster/health")
+        """GET /cluster/status — cluster enabled/disabled and node info."""
+        return await self._request("GET", "/cluster/status")
 
     async def get_cluster_nodes(self) -> Dict[str, Any]:
-        """Get cluster nodes."""
-        return await self._request("GET", "/cluster/nodes")
+        """GET /cluster/nodes/info — detailed node status (cluster must be enabled)."""
+        try:
+            return await self._request("GET", "/cluster/nodes/info")
+        except Exception:
+            # Fall back to cluster status if nodes/info isn't available (single-node)
+            return await self._request("GET", "/cluster/status")
 
     async def get_rules_summary(self) -> Dict[str, Any]:
-        """Get rules summary."""
-        return await self._request("GET", "/rules/summary")
+        """Aggregate rule counts by file/group from GET /rules."""
+        # Fetch just 1 result to get total count, then fetch group breakdown
+        overview = await self._request("GET", "/rules", params={"limit": 1})
+        total = overview.get("data", {}).get("total_affected_items", 0)
+
+        # Get rules grouped by filename for a meaningful summary
+        by_file = await self._request("GET", "/rules/files", params={"limit": 100})
+
+        return {
+            "data": {
+                "total_rules": total,
+                "rule_files": by_file.get("data", {}).get("affected_items", []),
+                "total_files": by_file.get("data", {}).get("total_affected_items", 0),
+            }
+        }
 
     async def get_remoted_stats(self) -> Dict[str, Any]:
-        """Get remoted statistics."""
+        """GET /manager/stats/remoted — agent communication daemon stats."""
         return await self._request("GET", "/manager/stats/remoted")
 
     async def get_log_collector_stats(self) -> Dict[str, Any]:
-        """Get log collector statistics."""
-        return await self._request("GET", "/manager/stats/logcollector")
+        """
+        Logcollector per-agent stats via GET /agents/{id}/stats/logcollector.
+        Falls back to general manager stats if no agents are found.
+        """
+        try:
+            agents = await self._request("GET", "/agents", params={"status": "active", "limit": 10})
+            items = agents.get("data", {}).get("affected_items", [])
+            if not items:
+                return await self._request("GET", "/manager/stats")
+            # Return logcollector stats for the first active agent
+            agent_id = items[0].get("id", "000")
+            return await self._request("GET", f"/agents/{agent_id}/stats/logcollector")
+        except Exception:
+            return await self._request("GET", "/manager/stats")
 
     async def search_manager_logs(self, query: str, limit: int) -> Dict[str, Any]:
-        """Search manager logs."""
-        params = {"q": query, "limit": limit}
+        """
+        Search manager logs. Wazuh /manager/logs accepts:
+          level=<debug|info|warning|error|critical>
+          tag=<wazuh-modulesd|...>
+        Plain-text search isn't supported — we map common keywords to level filters.
+        """
+        level_keywords = {"error", "warning", "info", "debug", "critical"}
+        level = query.lower() if query.lower() in level_keywords else None
+
+        params: Dict[str, Any] = {"limit": limit}
+        if level:
+            params["level"] = level
+        else:
+            # Use the query as a tag filter — best approximation available
+            params["tag"] = query
+
         return await self._request("GET", "/manager/logs", params=params)
 
     async def get_manager_error_logs(self, limit: int) -> Dict[str, Any]:
-        """Get manager error logs."""
-        params = {"level": "error", "limit": limit}
-        return await self._request("GET", "/manager/logs", params=params)
+        """GET /manager/logs?level=error."""
+        return await self._request("GET", "/manager/logs", params={"level": "error", "limit": limit})
 
     async def validate_connection(self) -> Dict[str, Any]:
-        """Validate Wazuh connection."""
         try:
             result = await self._request("GET", "/")
             return {"status": "connected", "details": result}
         except Exception as e:
             return {"status": "failed", "error": str(e)}
-    
+
+    # -------------------------------------------------------------------------
+    # Incident Timeline
+    # -------------------------------------------------------------------------
+
     async def build_incident_timeline(
         self,
         agent_id: str = None,
@@ -502,43 +506,35 @@ class WazuhClient:
         time_range: str = "24h",
         limit: int = 200,
     ) -> Dict[str, Any]:
-        """Build a unified incident timeline by correlating alerts and manager logs.
-
-        Makes two concurrent API calls (alerts + manager logs), normalizes
-        the results into a common format, and returns them sorted by timestamp.
-        If one call fails the other's results are still returned.
-        """
-        # Convert time_range to ISO timestamps
+        """Correlate alerts and manager logs into a unified timeline."""
         now = datetime.now(timezone.utc)
         range_map = {"1h": 1, "6h": 6, "24h": 24, "7d": 168}
         hours = range_map.get(time_range, 24)
         start_time = now - timedelta(hours=hours)
-
         start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         end_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Build params for each API call
-        alert_params: Dict[str, Any] = {
-            "timestamp_start": start_iso,
-            "timestamp_end": end_iso,
-            "limit": limit,
-        }
-        if agent_id:
-            alert_params["agent_id"] = agent_id
-        if rule_id:
-            alert_params["rule_id"] = rule_id
-        if level:
-            alert_params["level"] = level
-
         log_params: Dict[str, Any] = {"limit": limit}
         if query:
-            log_params["q"] = query
-        if level:
+            log_params["tag"] = query
+        if level and level in {"debug", "info", "warning", "error", "critical"}:
             log_params["level"] = level
 
-        # Concurrent API calls with graceful degradation
+        # Alerts come from the Indexer; logs from the Manager API
+        alert_task = (
+            self._indexer_client.get_alerts(
+                limit=limit,
+                agent_id=agent_id,
+                rule_id=rule_id,
+                level=level,
+                time_range=time_range,
+            )
+            if self._indexer_client
+            else asyncio.sleep(0)
+        )
+
         alert_result, log_result = await asyncio.gather(
-            self._request("GET", "/alerts", params=alert_params),
+            alert_task,
             self._request("GET", "/manager/logs", params=log_params),
             return_exceptions=True,
         )
@@ -548,14 +544,17 @@ class WazuhClient:
         log_count = 0
         errors: List[str] = []
 
-        # Process alerts
-        if isinstance(alert_result, Exception):
-            errors.append(f"Alerts fetch failed: {alert_result}")
+        if alert_result is None or isinstance(alert_result, Exception):
+            if isinstance(alert_result, Exception):
+                errors.append(f"Alerts fetch failed: {alert_result}")
+            elif not self._indexer_client:
+                errors.append("Alerts fetch skipped: Wazuh Indexer not configured")
         else:
-            items = alert_result.get("data", {}).get("affected_items", [])
+            # Indexer returns {"total": N, "alerts": [...]}
+            items = alert_result.get("alerts", [])
             for item in items:
                 timeline.append({
-                    "timestamp": item.get("timestamp", ""),
+                    "timestamp": item.get("@timestamp", ""),
                     "source_type": "alert",
                     "severity": str(item.get("rule", {}).get("level", "")),
                     "description": item.get("rule", {}).get("description", ""),
@@ -567,7 +566,6 @@ class WazuhClient:
                 })
             alert_count = len(items)
 
-        # Process manager logs
         if isinstance(log_result, Exception):
             errors.append(f"Logs fetch failed: {log_result}")
         else:
@@ -586,7 +584,6 @@ class WazuhClient:
                 })
             log_count = len(items)
 
-        # Sort by timestamp descending and trim to limit
         timeline.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
         timeline = timeline[:limit]
 
@@ -614,8 +611,50 @@ class WazuhClient:
 
         return {"data": {"timeline": timeline, "summary": summary}}
 
+    # -------------------------------------------------------------------------
+    # Misc / legacy pass-through
+    # -------------------------------------------------------------------------
+
+    async def get_manager_info(self) -> Dict[str, Any]:
+        return await self._request("GET", "/")
+
+    async def get_rules(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/rules", params=params)
+
+    async def get_rule_info(self, rule_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/rules", params={"rule_ids": rule_id})
+
+    async def get_decoders(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/decoders", params=params)
+
+    async def get_fim_events(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/syscheck", params=params)
+
+    async def get_syscollector_info(self, agent_id: str, **params) -> Dict[str, Any]:
+        return await self._request("GET", f"/syscollector/{agent_id}", params=params)
+
+    async def get_manager_stats(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/manager/stats", params=params)
+
+    async def get_cdb_lists(self, **params) -> Dict[str, Any]:
+        return await self._request("GET", "/lists", params=params)
+
+    async def execute_active_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        data = {k: v for k, v in data.items() if k != 'custom'}
+        return await self._request("PUT", "/active-response", json=data)
+
+    async def get_vulnerability_details(self, vuln_id: str, **params) -> Dict[str, Any]:
+        if not self._indexer_client:
+            raise IndexerNotConfiguredError()
+        return await self._indexer_client.get_vulnerabilities(cve_id=vuln_id, limit=1)
+
+    async def get_manager_version_check(self) -> Dict[str, Any]:
+        return await self._request("GET", "/manager/version/check")
+
+    async def get_agent_stats(self, agent_id: str, component: str = "logcollector") -> Dict[str, Any]:
+        return await self._request("GET", f"/agents/{agent_id}/stats/{component}")
+
     async def close(self):
-        """Close the HTTP client and indexer client."""
         if self.client:
             await self.client.aclose()
         if self._indexer_client:

@@ -42,6 +42,7 @@ ssh -N -L 55000:localhost:55000 user@your-vm-ip
 # examples: applicable to Gonzaga SEAS wazuh
 ssh -L 8443:localhost:443 -L 55000:localhost:55000 ai-wazuh #IP to wazuh - hosted on SEAS GPU subnet instance.
 ssh -L 8443:localhost:443 ai-wazuh #tunnel the dashboard 
+ssh -L 15500:localhost:15500 -L 9200:localhost:9200 ai-wazuh # wazuh indexer
 ```
 
 Then use `localhost` as `WAZUH_HOST` in the config below. Keep this tunnel open while using Claude.

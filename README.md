@@ -1,5 +1,7 @@
 # Wazuh MCP Remote Server v4.0.3
 
+**TONY NOTE: READ THE DOCS IN `docs/simple-setup.md`**
+
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Supported-blue.svg)](https://hub.docker.com/)
@@ -67,7 +69,7 @@ This implementation **100% complies** with the latest MCP specification:
 - **🌐 Multi-Environment**: Support for cloud, on-premise, and hybrid deployments
 - **🆕 Latest Features**: Full support for Wazuh 4.14.1 enhancements including improved vulnerability scanning and AWS integrations
 
-### 29 Specialized Tools
+### 30 Specialized Tools
 Comprehensive toolkit for security operations including:
 
 **Alert Management (4 tools)**
@@ -96,6 +98,7 @@ Comprehensive toolkit for security operations including:
 - **get_top_security_threats**: Top threat identification
 - **generate_security_report**: Automated security reporting
 - **run_compliance_check**: Framework compliance validation
+- **build_incident_timeline**: Incident timeline construction
 
 **System Monitoring (10 tools)**
 - **get_wazuh_statistics**: Comprehensive system metrics

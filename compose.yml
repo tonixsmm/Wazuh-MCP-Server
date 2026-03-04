@@ -32,12 +32,15 @@ services:
       ENVIRONMENT: production
       # Authentication mode: oauth (recommended), bearer (default), none (dev only)
       # AUTH_MODE: ${AUTH_MODE:-bearer}
-      WAZUH_HOST: "https://192.168.65.254"
-      WAZUH_PORT: "15500"
-      WAZUH_USER: "wazuh"
-      WAZUH_PASS: "Wm+kW7qOXwVyQ6gOUjBJ.hXC5zvD?4Pp"
+      WAZUH_HOST: "192.168.65.254"
+      WAZUH_PORT: "55000"
+      WAZUH_USER: "wazuh-wui"
+      WAZUH_PASS: "2TathNDlohD*.i3zmK1f7+cTZkM*0l2C"
       WAZUH_VERIFY_SSL: "false"
       AUTH_MODE: "none"
+      WAZUH_INDEXER_HOST: "192.168.65.254"
+      WAZUH_INDEXER_USER: "admin"
+      WAZUH_INDEXER_PASS: "ErT?dytUxbvIOdZH5HjaMZABB2HYFu90"
       
     ports:
       - "${MCP_PORT:-3000}:3000"
