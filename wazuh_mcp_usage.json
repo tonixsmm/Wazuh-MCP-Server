@@ -1,0 +1,899 @@
+{
+  "student_id": "user",
+  "session_start": "2026-03-05T08:37:11.942828+00:00",
+  "last_updated": "2026-03-05T08:49:24.633478+00:00",
+  "session_tokens": 9042,
+  "total_tokens": 108946,
+  "soft_limit": 50000,
+  "warn_threshold": 0.9,
+  "calls": [
+    {
+      "ts": "2026-03-05T07:47:40.421606+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-05T07:47:54.651166+00:00",
+      "tool": "get_wazuh_cluster_health",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 108
+    },
+    {
+      "ts": "2026-03-05T07:47:56.221104+00:00",
+      "tool": "get_wazuh_cluster_nodes",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 127
+    },
+    {
+      "ts": "2026-03-05T07:47:57.645161+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 387
+    },
+    {
+      "ts": "2026-03-05T07:48:07.035014+00:00",
+      "tool": "get_wazuh_critical_vulnerabilities",
+      "input_tokens": 3,
+      "output_tokens": 32,
+      "call_tokens": 35,
+      "session_running_total": 422
+    },
+    {
+      "ts": "2026-03-05T07:48:08.878290+00:00",
+      "tool": "get_wazuh_log_collector_stats",
+      "input_tokens": 1,
+      "output_tokens": 955,
+      "call_tokens": 956,
+      "session_running_total": 1378
+    },
+    {
+      "ts": "2026-03-05T07:48:10.616588+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 13,
+      "output_tokens": 248,
+      "call_tokens": 261,
+      "session_running_total": 1639
+    },
+    {
+      "ts": "2026-03-05T07:48:12.763544+00:00",
+      "tool": "check_agent_health",
+      "input_tokens": 4,
+      "output_tokens": 248,
+      "call_tokens": 252,
+      "session_running_total": 1891
+    },
+    {
+      "ts": "2026-03-05T07:48:14.694646+00:00",
+      "tool": "get_agent_processes",
+      "input_tokens": 7,
+      "output_tokens": 975,
+      "call_tokens": 982,
+      "session_running_total": 2873
+    },
+    {
+      "ts": "2026-03-05T07:48:17.207550+00:00",
+      "tool": "get_agent_ports",
+      "input_tokens": 7,
+      "output_tokens": 635,
+      "call_tokens": 642,
+      "session_running_total": 3515
+    },
+    {
+      "ts": "2026-03-05T07:48:19.533346+00:00",
+      "tool": "get_wazuh_statistics",
+      "input_tokens": 1,
+      "output_tokens": 2028,
+      "call_tokens": 2029,
+      "session_running_total": 5544
+    },
+    {
+      "ts": "2026-03-05T07:48:20.167151+00:00",
+      "tool": "get_wazuh_remoted_stats",
+      "input_tokens": 1,
+      "output_tokens": 167,
+      "call_tokens": 168,
+      "session_running_total": 5712
+    },
+    {
+      "ts": "2026-03-05T07:48:25.015861+00:00",
+      "tool": "get_wazuh_statistics",
+      "input_tokens": 1,
+      "output_tokens": 2028,
+      "call_tokens": 2029,
+      "session_running_total": 7741
+    },
+    {
+      "ts": "2026-03-05T07:48:26.960742+00:00",
+      "tool": "get_wazuh_remoted_stats",
+      "input_tokens": 1,
+      "output_tokens": 167,
+      "call_tokens": 168,
+      "session_running_total": 7909
+    },
+    {
+      "ts": "2026-03-05T07:48:31.124637+00:00",
+      "tool": "get_wazuh_weekly_stats",
+      "input_tokens": 1,
+      "output_tokens": 951,
+      "call_tokens": 952,
+      "session_running_total": 8861
+    },
+    {
+      "ts": "2026-03-05T07:48:35.306116+00:00",
+      "tool": "get_wazuh_rules_summary",
+      "input_tokens": 1,
+      "output_tokens": 3434,
+      "call_tokens": 3435,
+      "session_running_total": 12296
+    },
+    {
+      "ts": "2026-03-05T07:48:40.735980+00:00",
+      "tool": "get_wazuh_rules_summary",
+      "input_tokens": 1,
+      "output_tokens": 3434,
+      "call_tokens": 3435,
+      "session_running_total": 15731
+    },
+    {
+      "ts": "2026-03-05T07:48:42.956260+00:00",
+      "tool": "get_wazuh_manager_error_logs",
+      "input_tokens": 3,
+      "output_tokens": 44,
+      "call_tokens": 47,
+      "session_running_total": 15778
+    },
+    {
+      "ts": "2026-03-05T07:48:57.696247+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 27,
+      "output_tokens": 561,
+      "call_tokens": 588,
+      "session_running_total": 16366
+    },
+    {
+      "ts": "2026-03-05T07:49:21.519682+00:00",
+      "tool": "investigate_host",
+      "input_tokens": 11,
+      "output_tokens": 2655,
+      "call_tokens": 2666,
+      "session_running_total": 19032
+    },
+    {
+      "ts": "2026-03-05T07:54:19.955955+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-05T07:54:25.643417+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 40,
+      "output_tokens": 629,
+      "call_tokens": 669,
+      "session_running_total": 758
+    },
+    {
+      "ts": "2026-03-05T07:54:29.906149+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 13,
+      "output_tokens": 481,
+      "call_tokens": 494,
+      "session_running_total": 1252
+    },
+    {
+      "ts": "2026-03-05T07:54:31.850275+00:00",
+      "tool": "analyze_alert_patterns",
+      "input_tokens": 10,
+      "output_tokens": 486,
+      "call_tokens": 496,
+      "session_running_total": 1748
+    },
+    {
+      "ts": "2026-03-05T07:54:34.040265+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 16,
+      "output_tokens": 656,
+      "call_tokens": 672,
+      "session_running_total": 2420
+    },
+    {
+      "ts": "2026-03-05T07:54:36.048589+00:00",
+      "tool": "get_top_security_threats",
+      "input_tokens": 8,
+      "output_tokens": 204,
+      "call_tokens": 212,
+      "session_running_total": 2632
+    },
+    {
+      "ts": "2026-03-05T07:54:38.274244+00:00",
+      "tool": "perform_risk_assessment",
+      "input_tokens": 4,
+      "output_tokens": 225,
+      "call_tokens": 229,
+      "session_running_total": 2861
+    },
+    {
+      "ts": "2026-03-05T07:54:40.285961+00:00",
+      "tool": "generate_security_report",
+      "input_tokens": 15,
+      "output_tokens": 1906,
+      "call_tokens": 1921,
+      "session_running_total": 4782
+    },
+    {
+      "ts": "2026-03-05T07:54:43.065492+00:00",
+      "tool": "build_incident_timeline",
+      "input_tokens": 24,
+      "output_tokens": 502,
+      "call_tokens": 526,
+      "session_running_total": 5308
+    },
+    {
+      "ts": "2026-03-05T07:54:45.997476+00:00",
+      "tool": "run_compliance_check",
+      "input_tokens": 10,
+      "output_tokens": 34,
+      "call_tokens": 44,
+      "session_running_total": 5352
+    },
+    {
+      "ts": "2026-03-05T07:54:48.394318+00:00",
+      "tool": "analyze_security_threat",
+      "input_tokens": 13,
+      "output_tokens": 872,
+      "call_tokens": 885,
+      "session_running_total": 6237
+    },
+    {
+      "ts": "2026-03-05T07:54:51.945541+00:00",
+      "tool": "check_ioc_reputation",
+      "input_tokens": 13,
+      "output_tokens": 820,
+      "call_tokens": 833,
+      "session_running_total": 7070
+    },
+    {
+      "ts": "2026-03-05T07:57:21.197215+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 15,
+      "output_tokens": 1932,
+      "call_tokens": 1947,
+      "session_running_total": 1947
+    },
+    {
+      "ts": "2026-03-05T07:57:32.966784+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 2036
+    },
+    {
+      "ts": "2026-03-05T07:57:34.894449+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 15,
+      "output_tokens": 1241,
+      "call_tokens": 1256,
+      "session_running_total": 3292
+    },
+    {
+      "ts": "2026-03-05T07:57:36.906857+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 13,
+      "output_tokens": 481,
+      "call_tokens": 494,
+      "session_running_total": 3786
+    },
+    {
+      "ts": "2026-03-05T07:57:39.539866+00:00",
+      "tool": "analyze_alert_patterns",
+      "input_tokens": 10,
+      "output_tokens": 347,
+      "call_tokens": 357,
+      "session_running_total": 4143
+    },
+    {
+      "ts": "2026-03-05T07:57:41.971613+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 16,
+      "output_tokens": 407,
+      "call_tokens": 423,
+      "session_running_total": 4566
+    },
+    {
+      "ts": "2026-03-05T07:57:44.126445+00:00",
+      "tool": "get_top_security_threats",
+      "input_tokens": 8,
+      "output_tokens": 316,
+      "call_tokens": 324,
+      "session_running_total": 4890
+    },
+    {
+      "ts": "2026-03-05T07:57:46.006670+00:00",
+      "tool": "perform_risk_assessment",
+      "input_tokens": 4,
+      "output_tokens": 225,
+      "call_tokens": 229,
+      "session_running_total": 5119
+    },
+    {
+      "ts": "2026-03-05T07:57:48.114098+00:00",
+      "tool": "generate_security_report",
+      "input_tokens": 15,
+      "output_tokens": 1906,
+      "call_tokens": 1921,
+      "session_running_total": 7040
+    },
+    {
+      "ts": "2026-03-05T07:57:51.753410+00:00",
+      "tool": "build_incident_timeline",
+      "input_tokens": 24,
+      "output_tokens": 502,
+      "call_tokens": 526,
+      "session_running_total": 7566
+    },
+    {
+      "ts": "2026-03-05T07:57:54.969950+00:00",
+      "tool": "run_compliance_check",
+      "input_tokens": 10,
+      "output_tokens": 33,
+      "call_tokens": 43,
+      "session_running_total": 7609
+    },
+    {
+      "ts": "2026-03-05T07:57:57.235473+00:00",
+      "tool": "analyze_security_threat",
+      "input_tokens": 13,
+      "output_tokens": 872,
+      "call_tokens": 885,
+      "session_running_total": 8494
+    },
+    {
+      "ts": "2026-03-05T07:58:00.176296+00:00",
+      "tool": "check_ioc_reputation",
+      "input_tokens": 13,
+      "output_tokens": 820,
+      "call_tokens": 833,
+      "session_running_total": 9327
+    },
+    {
+      "ts": "2026-03-05T07:58:03.009534+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 9587
+    },
+    {
+      "ts": "2026-03-05T07:58:05.802573+00:00",
+      "tool": "check_agent_health",
+      "input_tokens": 4,
+      "output_tokens": 248,
+      "call_tokens": 252,
+      "session_running_total": 9839
+    },
+    {
+      "ts": "2026-03-05T07:58:07.970204+00:00",
+      "tool": "get_agent_processes",
+      "input_tokens": 7,
+      "output_tokens": 607,
+      "call_tokens": 614,
+      "session_running_total": 10453
+    },
+    {
+      "ts": "2026-03-05T07:58:11.010742+00:00",
+      "tool": "get_agent_ports",
+      "input_tokens": 7,
+      "output_tokens": 399,
+      "call_tokens": 406,
+      "session_running_total": 10859
+    },
+    {
+      "ts": "2026-03-05T07:58:14.812565+00:00",
+      "tool": "get_wazuh_critical_vulnerabilities",
+      "input_tokens": 3,
+      "output_tokens": 32,
+      "call_tokens": 35,
+      "session_running_total": 10894
+    },
+    {
+      "ts": "2026-03-05T07:58:18.387706+00:00",
+      "tool": "get_wazuh_cluster_health",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 10913
+    },
+    {
+      "ts": "2026-03-05T07:58:24.381535+00:00",
+      "tool": "get_wazuh_rules_summary",
+      "input_tokens": 1,
+      "output_tokens": 3434,
+      "call_tokens": 3435,
+      "session_running_total": 14348
+    },
+    {
+      "ts": "2026-03-05T07:58:26.320262+00:00",
+      "tool": "get_wazuh_statistics",
+      "input_tokens": 1,
+      "output_tokens": 2028,
+      "call_tokens": 2029,
+      "session_running_total": 16377
+    },
+    {
+      "ts": "2026-03-05T07:58:32.986038+00:00",
+      "tool": "get_wazuh_remoted_stats",
+      "input_tokens": 1,
+      "output_tokens": 167,
+      "call_tokens": 168,
+      "session_running_total": 16545
+    },
+    {
+      "ts": "2026-03-05T07:58:35.043433+00:00",
+      "tool": "get_wazuh_log_collector_stats",
+      "input_tokens": 1,
+      "output_tokens": 955,
+      "call_tokens": 956,
+      "session_running_total": 17501
+    },
+    {
+      "ts": "2026-03-05T07:58:37.181340+00:00",
+      "tool": "search_wazuh_manager_logs",
+      "input_tokens": 7,
+      "output_tokens": 44,
+      "call_tokens": 51,
+      "session_running_total": 17552
+    },
+    {
+      "ts": "2026-03-05T07:58:44.713993+00:00",
+      "tool": "get_wazuh_manager_error_logs",
+      "input_tokens": 3,
+      "output_tokens": 44,
+      "call_tokens": 47,
+      "session_running_total": 17599
+    },
+    {
+      "ts": "2026-03-05T07:58:46.845640+00:00",
+      "tool": "investigate_host",
+      "input_tokens": 11,
+      "output_tokens": 2655,
+      "call_tokens": 2666,
+      "session_running_total": 20265
+    },
+    {
+      "ts": "2026-03-05T07:58:50.405045+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 27,
+      "output_tokens": 561,
+      "call_tokens": 588,
+      "session_running_total": 20853
+    },
+    {
+      "ts": "2026-03-05T08:00:10.644396+00:00",
+      "tool": "get_wazuh_running_agents",
+      "input_tokens": 1,
+      "output_tokens": 248,
+      "call_tokens": 249,
+      "session_running_total": 21102
+    },
+    {
+      "ts": "2026-03-05T08:00:13.315567+00:00",
+      "tool": "get_wazuh_running_agents",
+      "input_tokens": 1,
+      "output_tokens": 248,
+      "call_tokens": 249,
+      "session_running_total": 21351
+    },
+    {
+      "ts": "2026-03-05T08:00:18.371820+00:00",
+      "tool": "get_wazuh_vulnerabilities",
+      "input_tokens": 12,
+      "output_tokens": 32,
+      "call_tokens": 44,
+      "session_running_total": 21395
+    },
+    {
+      "ts": "2026-03-05T08:00:23.764500+00:00",
+      "tool": "get_wazuh_vulnerabilities",
+      "input_tokens": 12,
+      "output_tokens": 32,
+      "call_tokens": 44,
+      "session_running_total": 21439
+    },
+    {
+      "ts": "2026-03-05T08:00:25.812189+00:00",
+      "tool": "get_wazuh_vulnerability_summary",
+      "input_tokens": 5,
+      "output_tokens": 41,
+      "call_tokens": 46,
+      "session_running_total": 21485
+    },
+    {
+      "ts": "2026-03-05T08:00:30.006183+00:00",
+      "tool": "get_wazuh_weekly_stats",
+      "input_tokens": 1,
+      "output_tokens": 951,
+      "call_tokens": 952,
+      "session_running_total": 22437
+    },
+    {
+      "ts": "2026-03-05T08:00:32.746081+00:00",
+      "tool": "get_wazuh_cluster_nodes",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 22456
+    },
+    {
+      "ts": "2026-03-05T08:08:24.618872+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 31,
+      "output_tokens": 61,
+      "call_tokens": 92,
+      "session_running_total": 92
+    },
+    {
+      "ts": "2026-03-05T08:08:52.584306+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 33,
+      "output_tokens": 61,
+      "call_tokens": 94,
+      "session_running_total": 186
+    },
+    {
+      "ts": "2026-03-05T08:09:41.707608+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-05T08:10:57.505786+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-05T08:10:59.772046+00:00",
+      "tool": "get_wazuh_cluster_health",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 108
+    },
+    {
+      "ts": "2026-03-05T08:11:00.933330+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 368
+    },
+    {
+      "ts": "2026-03-05T08:11:02.339530+00:00",
+      "tool": "get_wazuh_critical_vulnerabilities",
+      "input_tokens": 3,
+      "output_tokens": 32,
+      "call_tokens": 35,
+      "session_running_total": 403
+    },
+    {
+      "ts": "2026-03-05T08:11:22.137040+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 13,
+      "output_tokens": 481,
+      "call_tokens": 494,
+      "session_running_total": 897
+    },
+    {
+      "ts": "2026-03-05T08:11:32.650649+00:00",
+      "tool": "analyze_alert_patterns",
+      "input_tokens": 10,
+      "output_tokens": 486,
+      "call_tokens": 496,
+      "session_running_total": 1393
+    },
+    {
+      "ts": "2026-03-05T08:11:36.089944+00:00",
+      "tool": "get_top_security_threats",
+      "input_tokens": 8,
+      "output_tokens": 204,
+      "call_tokens": 212,
+      "session_running_total": 1605
+    },
+    {
+      "ts": "2026-03-05T08:11:39.724342+00:00",
+      "tool": "get_wazuh_cluster_nodes",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 1624
+    },
+    {
+      "ts": "2026-03-05T08:11:44.968919+00:00",
+      "tool": "get_wazuh_log_collector_stats",
+      "input_tokens": 1,
+      "output_tokens": 951,
+      "call_tokens": 952,
+      "session_running_total": 2576
+    },
+    {
+      "ts": "2026-03-05T08:11:51.498909+00:00",
+      "tool": "check_agent_health",
+      "input_tokens": 4,
+      "output_tokens": 248,
+      "call_tokens": 252,
+      "session_running_total": 2828
+    },
+    {
+      "ts": "2026-03-05T08:11:57.265857+00:00",
+      "tool": "get_agent_processes",
+      "input_tokens": 7,
+      "output_tokens": 975,
+      "call_tokens": 982,
+      "session_running_total": 3810
+    },
+    {
+      "ts": "2026-03-05T08:12:03.634231+00:00",
+      "tool": "get_agent_ports",
+      "input_tokens": 8,
+      "output_tokens": 1226,
+      "call_tokens": 1234,
+      "session_running_total": 5044
+    },
+    {
+      "ts": "2026-03-05T08:12:11.254733+00:00",
+      "tool": "get_agent_configuration",
+      "input_tokens": 4,
+      "output_tokens": 2523,
+      "call_tokens": 2527,
+      "session_running_total": 7571
+    },
+    {
+      "ts": "2026-03-05T08:12:19.441222+00:00",
+      "tool": "build_incident_timeline",
+      "input_tokens": 24,
+      "output_tokens": 540,
+      "call_tokens": 564,
+      "session_running_total": 8135
+    },
+    {
+      "ts": "2026-03-05T08:12:28.411017+00:00",
+      "tool": "analyze_security_threat",
+      "input_tokens": 12,
+      "output_tokens": 36,
+      "call_tokens": 48,
+      "session_running_total": 8183
+    },
+    {
+      "ts": "2026-03-05T08:12:38.876338+00:00",
+      "tool": "check_ioc_reputation",
+      "input_tokens": 12,
+      "output_tokens": 30,
+      "call_tokens": 42,
+      "session_running_total": 8225
+    },
+    {
+      "ts": "2026-03-05T08:12:49.731719+00:00",
+      "tool": "perform_risk_assessment",
+      "input_tokens": 4,
+      "output_tokens": 225,
+      "call_tokens": 229,
+      "session_running_total": 8454
+    },
+    {
+      "ts": "2026-03-05T08:12:51.783884+00:00",
+      "tool": "perform_risk_assessment",
+      "input_tokens": 4,
+      "output_tokens": 223,
+      "call_tokens": 227,
+      "session_running_total": 8681
+    },
+    {
+      "ts": "2026-03-05T08:13:03.888716+00:00",
+      "tool": "run_compliance_check",
+      "input_tokens": 9,
+      "output_tokens": 33,
+      "call_tokens": 42,
+      "session_running_total": 8723
+    },
+    {
+      "ts": "2026-03-05T08:13:17.600460+00:00",
+      "tool": "generate_security_report",
+      "input_tokens": 15,
+      "output_tokens": 1875,
+      "call_tokens": 1890,
+      "session_running_total": 10613
+    },
+    {
+      "ts": "2026-03-05T08:13:33.395872+00:00",
+      "tool": "get_wazuh_vulnerabilities",
+      "input_tokens": 12,
+      "output_tokens": 32,
+      "call_tokens": 44,
+      "session_running_total": 10657
+    },
+    {
+      "ts": "2026-03-05T08:13:37.275663+00:00",
+      "tool": "get_wazuh_vulnerabilities",
+      "input_tokens": 12,
+      "output_tokens": 32,
+      "call_tokens": 44,
+      "session_running_total": 10701
+    },
+    {
+      "ts": "2026-03-05T08:13:56.054137+00:00",
+      "tool": "get_wazuh_remoted_stats",
+      "input_tokens": 1,
+      "output_tokens": 167,
+      "call_tokens": 168,
+      "session_running_total": 10869
+    },
+    {
+      "ts": "2026-03-05T08:14:15.742333+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 27,
+      "output_tokens": 561,
+      "call_tokens": 588,
+      "session_running_total": 11457
+    },
+    {
+      "ts": "2026-03-05T08:14:38.931003+00:00",
+      "tool": "get_wazuh_rules_summary",
+      "input_tokens": 1,
+      "output_tokens": 3434,
+      "call_tokens": 3435,
+      "session_running_total": 14892
+    },
+    {
+      "ts": "2026-03-05T08:14:42.659593+00:00",
+      "tool": "get_wazuh_rules_summary",
+      "input_tokens": 1,
+      "output_tokens": 3434,
+      "call_tokens": 3435,
+      "session_running_total": 18327
+    },
+    {
+      "ts": "2026-03-05T08:15:11.400285+00:00",
+      "tool": "get_wazuh_statistics",
+      "input_tokens": 1,
+      "output_tokens": 2292,
+      "call_tokens": 2293,
+      "session_running_total": 20620
+    },
+    {
+      "ts": "2026-03-05T08:15:45.436333+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 12,
+      "output_tokens": 8,
+      "call_tokens": 20,
+      "session_running_total": 20640
+    },
+    {
+      "ts": "2026-03-05T08:16:17.093512+00:00",
+      "tool": "search_wazuh_manager_logs",
+      "input_tokens": 7,
+      "output_tokens": 44,
+      "call_tokens": 51,
+      "session_running_total": 20691
+    },
+    {
+      "ts": "2026-03-05T08:16:52.138342+00:00",
+      "tool": "investigate_host",
+      "input_tokens": 11,
+      "output_tokens": 2804,
+      "call_tokens": 2815,
+      "session_running_total": 23506
+    },
+    {
+      "ts": "2026-03-05T08:23:54.680882+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 23595
+    },
+    {
+      "ts": "2026-03-05T08:23:58.163807+00:00",
+      "tool": "run_compliance_check",
+      "input_tokens": 9,
+      "output_tokens": 33,
+      "call_tokens": 42,
+      "session_running_total": 23637
+    },
+    {
+      "ts": "2026-03-05T08:24:01.490480+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 47,
+      "output_tokens": 62,
+      "call_tokens": 109,
+      "session_running_total": 23746
+    },
+    {
+      "ts": "2026-03-05T08:24:03.600180+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 45,
+      "output_tokens": 182,
+      "call_tokens": 227,
+      "session_running_total": 23973
+    },
+    {
+      "ts": "2026-03-05T08:25:44.339122+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 13,
+      "output_tokens": 481,
+      "call_tokens": 494,
+      "session_running_total": 494
+    },
+    {
+      "ts": "2026-03-05T08:26:53.645620+00:00",
+      "tool": "get_wazuh_critical_vulnerabilities",
+      "input_tokens": 3,
+      "output_tokens": 32,
+      "call_tokens": 35,
+      "session_running_total": 529
+    },
+    {
+      "ts": "2026-03-05T08:26:57.069962+00:00",
+      "tool": "get_wazuh_vulnerabilities",
+      "input_tokens": 12,
+      "output_tokens": 32,
+      "call_tokens": 44,
+      "session_running_total": 573
+    },
+    {
+      "ts": "2026-03-05T08:26:59.672249+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 31,
+      "output_tokens": 61,
+      "call_tokens": 92,
+      "session_running_total": 665
+    },
+    {
+      "ts": "2026-03-05T08:28:29.550597+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 40,
+      "output_tokens": 26393,
+      "call_tokens": 26433,
+      "session_running_total": 27098
+    },
+    {
+      "ts": "2026-03-05T08:37:31.377254+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 15,
+      "output_tokens": 4485,
+      "call_tokens": 4500,
+      "session_running_total": 4500
+    },
+    {
+      "ts": "2026-03-05T08:37:46.222206+00:00",
+      "tool": "get_wazuh_vulnerabilities",
+      "input_tokens": 12,
+      "output_tokens": 32,
+      "call_tokens": 44,
+      "session_running_total": 4544
+    },
+    {
+      "ts": "2026-03-05T08:49:24.633448+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 15,
+      "output_tokens": 4483,
+      "call_tokens": 4498,
+      "session_running_total": 9042
+    }
+  ]
+}

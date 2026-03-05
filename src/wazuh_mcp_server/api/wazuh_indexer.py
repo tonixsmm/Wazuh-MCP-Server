@@ -44,6 +44,10 @@ class WazuhIndexerClient:
         self.client: Optional[httpx.AsyncClient] = None
         self._initialized = False
 
+    def _time_range_to_ms(self, time_range: str) -> str:
+        """Convert a time range string like '24h', '7d' to OpenSearch 'now-Xh' format."""
+        return f"now-{time_range}"
+
     @property
     def base_url(self) -> str:
         """Get the base URL for the Wazuh Indexer."""
@@ -266,69 +270,70 @@ class WazuhIndexerClient:
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
 
-    def _time_range_to_ms(self, time_range: str) -> str:
-        """Convert a time range string like '24h', '7d' to OpenSearch 'now-Xh' format."""
-        return f"now-{time_range}"
-
     async def get_alerts(
         self,
         limit: int = 100,
+        agent_id: Optional[str] = None,
         rule_id: Optional[str] = None,
         level: Optional[str] = None,
-        agent_id: Optional[str] = None,
         time_range: str = "24h",
     ) -> Dict[str, Any]:
         """
-        Retrieve Wazuh alerts from the Indexer.
+        Retrieve alerts from the Wazuh Indexer with optional filters.
 
         Args:
-            limit: Max alerts to return.
-            rule_id: Filter by rule ID.
-            level: Filter by severity level or range (e.g. "10" or "10-15").
+            limit: Maximum number of alerts to return.
             agent_id: Filter by agent ID.
+            rule_id: Filter by rule ID.
+            level: Filter by severity level or range (e.g. "10" or "7-15").
             time_range: Time window (e.g. "1h", "24h", "7d").
+
+        Returns:
+            Dict with total count and list of alert dicts.
         """
         await self._ensure_initialized()
 
-        must = [{"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}}]
+        filter_clauses = [
+            {"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}}
+        ]
 
-        if rule_id:
-            must.append({"term": {"rule.id": rule_id}})
         if agent_id:
-            must.append({"term": {"agent.id": agent_id}})
+            filter_clauses.append({"match": {"agent.id": agent_id}})
+        if rule_id:
+            filter_clauses.append({"match": {"rule.id": rule_id}})
         if level:
             if "-" in level:
                 lo, hi = level.split("-", 1)
-                must.append({"range": {"rule.level": {"gte": int(lo), "lte": int(hi)}}})
+                filter_clauses.append(
+                    {"range": {"rule.level": {"gte": int(lo), "lte": int(hi)}}}
+                )
             else:
-                must.append({"term": {"rule.level": int(level)}})
-
-        query = {"bool": {"must": must}}
+                filter_clauses.append({"term": {"rule.level": int(level)}})
 
         body = {
-            "query": query,
+            "query": {"bool": {"filter": filter_clauses}},
             "size": limit,
             "sort": [{"@timestamp": {"order": "desc"}}],
-            "_source": ["@timestamp", "agent.id", "agent.name", "rule.id",
-                        "rule.level", "rule.description", "rule.groups",
-                        "data", "location", "full_log"],
         }
 
         url = f"{self.base_url}/wazuh-alerts-*/_search"
         try:
-            response = await self.client.post(url, json=body,
-                                              headers={"Content-Type": "application/json"})
+            response = await self.client.post(
+                url, json=body, headers={"Content-Type": "application/json"}
+            )
             response.raise_for_status()
-            raw = response.json()
-            hits = raw.get("hits", {}).get("hits", [])
-            return {
-                "total": raw.get("hits", {}).get("total", {}).get("value", len(hits)),
-                "alerts": [h["_source"] for h in hits],
-            }
+            result = response.json()
         except httpx.HTTPStatusError as e:
-            raise ValueError(f"Alert query failed: {e.response.status_code} - {e.response.text}")
+            raise ValueError(f"Alerts query failed: {e.response.status_code} - {e.response.text}")
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
+
+        hits = result.get("hits", {})
+        alerts = [h["_source"] for h in hits.get("hits", [])]
+        total = hits.get("total", {})
+        total = total.get("value", 0) if isinstance(total, dict) else total
+
+        return {"total": total, "alerts": alerts}
 
     async def get_alert_summary(
         self,
@@ -336,23 +341,36 @@ class WazuhIndexerClient:
         group_by: str = "rule.description",
     ) -> Dict[str, Any]:
         """
-        Summarise alerts grouped by a field using aggregations.
+        Summarise alerts via OpenSearch aggregations.
 
         Args:
             time_range: Time window (e.g. "1h", "24h", "7d").
-            group_by: Field to aggregate on.
+            group_by: Field to group results by (default "rule.description").
+
+        Returns:
+            Dict with top_entries list, by_level list, by_agent list, and total_alerts.
         """
         await self._ensure_initialized()
 
         body = {
-            "query": {"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}},
             "size": 0,
+            "query": {
+                "range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}
+            },
             "aggs": {
-                "by_field": {
-                    "terms": {"field": group_by, "size": 50, "order": {"_count": "desc"}}
+                "top_entries": {
+                    "terms": {"field": group_by, "size": 20}
                 },
                 "by_level": {
-                    "terms": {"field": "rule.level", "size": 20}
+                    "range": {
+                        "field": "rule.level",
+                        "ranges": [
+                            {"key": "low (0-6)",      "from": 0,  "to": 7},
+                            {"key": "medium (7-10)",  "from": 7,  "to": 11},
+                            {"key": "high (11-14)",   "from": 11, "to": 15},
+                            {"key": "critical (15+)", "from": 15},
+                        ],
+                    }
                 },
                 "by_agent": {
                     "terms": {"field": "agent.name", "size": 20}
@@ -362,31 +380,37 @@ class WazuhIndexerClient:
 
         url = f"{self.base_url}/wazuh-alerts-*/_search"
         try:
-            response = await self.client.post(url, json=body,
-                                              headers={"Content-Type": "application/json"})
+            response = await self.client.post(
+                url, json=body, headers={"Content-Type": "application/json"}
+            )
             response.raise_for_status()
-            raw = response.json()
-            aggs = raw.get("aggregations", {})
-            total = raw.get("hits", {}).get("total", {}).get("value", 0)
-
-            def buckets(key):
-                return [
-                    {"key": b["key"], "count": b["doc_count"]}
-                    for b in aggs.get(key, {}).get("buckets", [])
-                ]
-
-            return {
-                "total_alerts": total,
-                "time_range": time_range,
-                "grouped_by": group_by,
-                "top_entries": buckets("by_field"),
-                "by_level": buckets("by_level"),
-                "by_agent": buckets("by_agent"),
-            }
+            result = response.json()
         except httpx.HTTPStatusError as e:
             raise ValueError(f"Alert summary query failed: {e.response.status_code} - {e.response.text}")
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
+
+        total = result.get("hits", {}).get("total", {})
+        total = total.get("value", 0) if isinstance(total, dict) else total
+        aggs = result.get("aggregations", {})
+
+        return {
+            "time_range": time_range,
+            "group_by": group_by,
+            "total_alerts": total,
+            "top_entries": [
+                {"key": b["key"], "count": b["doc_count"]}
+                for b in aggs.get("top_entries", {}).get("buckets", [])
+            ],
+            "by_level": [
+                {"level": b["key"], "count": b["doc_count"]}
+                for b in aggs.get("by_level", {}).get("buckets", [])
+            ],
+            "by_agent": [
+                {"agent": b["key"], "count": b["doc_count"]}
+                for b in aggs.get("by_agent", {}).get("buckets", [])
+            ],
+        }
 
     async def analyze_alert_patterns(
         self,
@@ -394,29 +418,29 @@ class WazuhIndexerClient:
         min_frequency: int = 5,
     ) -> Dict[str, Any]:
         """
-        Identify recurring alert patterns (high-frequency rule/agent combos).
+        Surface recurring alert patterns above a minimum frequency threshold.
 
         Args:
-            time_range: Time window to analyze.
-            min_frequency: Minimum occurrences to include a pattern.
+            time_range: Time window (e.g. "1h", "24h", "7d").
+            min_frequency: Minimum hit count for a pattern to be included.
+
+        Returns:
+            Dict with patterns list (rule, count, level, sample_agents) and metadata.
         """
         await self._ensure_initialized()
 
         body = {
-            "query": {"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}},
             "size": 0,
+            "query": {
+                "range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}
+            },
             "aggs": {
-                "patterns": {
-                    "composite": {
-                        "size": 100,
-                        "sources": [
-                            {"rule_id": {"terms": {"field": "rule.id"}}},
-                            {"agent": {"terms": {"field": "agent.name"}}},
-                        ],
-                    },
+                "by_rule": {
+                    "terms": {"field": "rule.description", "size": 100, "min_doc_count": min_frequency},
                     "aggs": {
-                        "rule_desc": {"terms": {"field": "rule.description", "size": 1}},
-                        "max_level": {"max": {"field": "rule.level"}},
+                        "rule_id":    {"terms": {"field": "rule.id",    "size": 1}},
+                        "rule_level": {"terms": {"field": "rule.level", "size": 1}},
+                        "agents":     {"terms": {"field": "agent.name", "size": 5}},
                     },
                 }
             },
@@ -424,36 +448,39 @@ class WazuhIndexerClient:
 
         url = f"{self.base_url}/wazuh-alerts-*/_search"
         try:
-            response = await self.client.post(url, json=body,
-                                              headers={"Content-Type": "application/json"})
+            response = await self.client.post(
+                url, json=body, headers={"Content-Type": "application/json"}
+            )
             response.raise_for_status()
-            raw = response.json()
-            buckets = raw.get("aggregations", {}).get("patterns", {}).get("buckets", [])
-
-            patterns = []
-            for b in buckets:
-                if b["doc_count"] >= min_frequency:
-                    desc_buckets = b.get("rule_desc", {}).get("buckets", [])
-                    description = desc_buckets[0]["key"] if desc_buckets else "Unknown"
-                    patterns.append({
-                        "rule_id": b["key"]["rule_id"],
-                        "agent": b["key"]["agent"],
-                        "count": b["doc_count"],
-                        "description": description,
-                        "max_level": b.get("max_level", {}).get("value"),
-                    })
-
-            patterns.sort(key=lambda x: x["count"], reverse=True)
-            return {
-                "time_range": time_range,
-                "min_frequency": min_frequency,
-                "pattern_count": len(patterns),
-                "patterns": patterns,
-            }
+            result = response.json()
         except httpx.HTTPStatusError as e:
             raise ValueError(f"Alert pattern query failed: {e.response.status_code} - {e.response.text}")
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
+
+        aggs = result.get("aggregations", {})
+        patterns = []
+        for b in aggs.get("by_rule", {}).get("buckets", []):
+            rule_id_buckets = b.get("rule_id", {}).get("buckets", [])
+            level_buckets   = b.get("rule_level", {}).get("buckets", [])
+            agent_buckets   = b.get("agents", {}).get("buckets", [])
+            patterns.append({
+                "rule":          b["key"],
+                "count":         b["doc_count"],
+                "rule_id":       rule_id_buckets[0]["key"] if rule_id_buckets else None,
+                "rule_level":    level_buckets[0]["key"]   if level_buckets   else None,
+                "sample_agents": [a["key"] for a in agent_buckets],
+            })
+
+        # Sort by count descending so highest-signal patterns come first
+        patterns.sort(key=lambda x: x["count"], reverse=True)
+
+        return {
+            "time_range":     time_range,
+            "min_frequency":  min_frequency,
+            "pattern_count":  len(patterns),
+            "patterns":       patterns,
+        }
 
     async def search_security_events(
         self,
@@ -462,47 +489,335 @@ class WazuhIndexerClient:
         limit: int = 100,
     ) -> Dict[str, Any]:
         """
-        Full-text search across Wazuh alerts in the Indexer.
+        Full-text search across Wazuh alerts using a query string.
 
         Args:
-            query: Search string (Lucene syntax supported).
-            time_range: Time window to search within.
-            limit: Max results to return.
+            query: Query string (supports Lucene syntax, e.g. "ssh AND failed").
+            time_range: Time window (e.g. "1h", "24h", "7d").
+            limit: Maximum number of results to return.
+
+        Returns:
+            Dict with total count and results list.
         """
         await self._ensure_initialized()
 
         body = {
+            "size": limit,
             "query": {
                 "bool": {
-                    "must": [
-                        {"query_string": {"query": query, "default_field": "*"}},
-                        {"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}},
-                    ]
+                    "must": [{"query_string": {"query": query, "default_field": "*"}}],
+                    "filter": [
+                        {"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}}
+                    ],
                 }
             },
-            "size": limit,
             "sort": [{"@timestamp": {"order": "desc"}}],
-            "_source": ["@timestamp", "agent.id", "agent.name", "rule.id",
-                        "rule.level", "rule.description", "data", "full_log"],
+            "_source": [
+                "@timestamp", "rule.id", "rule.description", "rule.level",
+                "rule.groups", "agent.id", "agent.name", "data.srcip",
+                "full_log",
+            ],
         }
 
         url = f"{self.base_url}/wazuh-alerts-*/_search"
         try:
-            response = await self.client.post(url, json=body,
-                                              headers={"Content-Type": "application/json"})
+            response = await self.client.post(
+                url, json=body, headers={"Content-Type": "application/json"}
+            )
             response.raise_for_status()
-            raw = response.json()
-            hits = raw.get("hits", {}).get("hits", [])
-            return {
-                "total": raw.get("hits", {}).get("total", {}).get("value", len(hits)),
-                "query": query,
-                "time_range": time_range,
-                "results": [h["_source"] for h in hits],
-            }
+            result = response.json()
         except httpx.HTTPStatusError as e:
             raise ValueError(f"Security event search failed: {e.response.status_code} - {e.response.text}")
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
+
+        hits = result.get("hits", {})
+        total = hits.get("total", {})
+        total = total.get("value", 0) if isinstance(total, dict) else total
+
+        results = []
+        for h in hits.get("hits", []):
+            src = h["_source"]
+            results.append({
+                "timestamp":        src.get("@timestamp"),
+                "rule_id":          src.get("rule", {}).get("id"),
+                "rule_description": src.get("rule", {}).get("description"),
+                "rule_level":       src.get("rule", {}).get("level"),
+                "rule_groups":      src.get("rule", {}).get("groups", []),
+                "agent_id":         src.get("agent", {}).get("id"),
+                "agent_name":       src.get("agent", {}).get("name"),
+                "src_ip":           src.get("data", {}).get("srcip"),
+                "full_log":         (src.get("full_log") or "")[:500],
+            })
+
+        return {"total": total, "results": results}
+
+    async def investigate_host(
+        self,
+        agent_name: str,
+        time_range: str = "7d",
+    ) -> Dict[str, Any]:
+        """
+        Deep host investigation: runs 5 parallel OpenSearch queries to build
+        a comprehensive picture of activity on a given agent/host.
+
+        Covers: severity distribution, high-severity events, executables (BAM
+        registry via syscheck), registry changes, login activity, top rules,
+        and a 6-hour activity timeline.
+
+        Args:
+            agent_name: Agent/host name to investigate (e.g. 'ai-wazuh').
+            time_range: How far back to search (e.g. '24h', '7d', '30d').
+        """
+        import asyncio
+        await self._ensure_initialized()
+
+        gte = self._time_range_to_ms(time_range)
+        base_filter = [
+            {"match_phrase": {"agent.name": agent_name}},
+            {"range": {"@timestamp": {"gte": gte}}},
+        ]
+
+        async def _search(body: Dict[str, Any]) -> Dict[str, Any]:
+            url = f"{self.base_url}/wazuh-alerts-*/_search"
+            try:
+                response = await self.client.post(
+                    url, json=body, headers={"Content-Type": "application/json"}
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"investigate_host query failed: {e.response.status_code}")
+                return {}
+            except Exception as e:
+                logger.error(f"investigate_host query error: {e}")
+                return {}
+
+        # Fire all 5 queries concurrently
+        overview_q = {
+            "query": {"bool": {"filter": base_filter}},
+            "size": 0,
+            "aggs": {
+                "agent_id": {"terms": {"field": "agent.id", "size": 1}},
+                "agent_ip": {"terms": {"field": "agent.ip", "size": 1}},
+                "severity": {
+                    "range": {
+                        "field": "rule.level",
+                        "ranges": [
+                            {"key": "low (0-6)", "from": 0, "to": 7},
+                            {"key": "medium (7-10)", "from": 7, "to": 11},
+                            {"key": "high (11-14)", "from": 11, "to": 15},
+                            {"key": "critical (15+)", "from": 15},
+                        ],
+                    }
+                },
+                "top_rules": {"terms": {"field": "rule.description", "size": 15}},
+                "rule_groups": {"terms": {"field": "rule.groups", "size": 20}},
+                "timeline": {
+                    "date_histogram": {
+                        "field": "@timestamp",
+                        "fixed_interval": "6h",
+                    }
+                },
+            },
+        }
+
+        executables_q = {
+            "query": {
+                "bool": {
+                    "filter": base_filter + [
+                        {"wildcard": {"syscheck.value_name": "*\\*.exe"}}
+                    ]
+                }
+            },
+            "size": 50,
+            "sort": [{"@timestamp": {"order": "asc"}}],
+            "_source": [
+                "@timestamp", "syscheck.value_name", "syscheck.event",
+                "syscheck.sha256_after", "rule.id", "rule.description",
+            ],
+        }
+
+        registry_q = {
+            "query": {
+                "bool": {
+                    "filter": base_filter + [
+                        {"terms": {"rule.id": ["750", "751", "752", "753"]}}
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_event": {"terms": {"field": "syscheck.event", "size": 10}},
+                "by_path": {"terms": {"field": "syscheck.path", "size": 10}},
+            },
+        }
+
+        high_sev_q = {
+            "query": {
+                "bool": {
+                    "filter": base_filter + [
+                        {"range": {"rule.level": {"gte": 7}}}
+                    ]
+                }
+            },
+            "size": 20,
+            "sort": [
+                {"rule.level": {"order": "desc"}},
+                {"@timestamp": {"order": "desc"}},
+            ],
+            "_source": [
+                "@timestamp", "rule.id", "rule.description", "rule.level",
+                "rule.groups", "rule.mitre", "data.srcip", "data.dstip",
+                "syscheck.path", "syscheck.value_name", "full_log",
+            ],
+        }
+
+        login_q = {
+            "query": {
+                "bool": {
+                    "filter": base_filter + [
+                        {"terms": {"rule.groups": [
+                            "authentication_success", "authentication_failed"
+                        ]}}
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_user": {"terms": {"field": "data.dstuser", "size": 10}},
+                "by_src_ip": {"terms": {"field": "data.srcip", "size": 10}},
+                "by_logon_type": {"terms": {"field": "data.logonType", "size": 10}},
+            },
+        }
+
+        overview, executables, registry, high_sev, logins = await asyncio.gather(
+            _search(overview_q),
+            _search(executables_q),
+            _search(registry_q),
+            _search(high_sev_q),
+            _search(login_q),
+        )
+
+        # --- Build structured result ---
+        total = (overview.get("hits", {}).get("total") or {})
+        total = total.get("value", 0) if isinstance(total, dict) else total
+
+        aggs = overview.get("aggregations", {})
+
+        def buckets(agg_key: str) -> list:
+            return aggs.get(agg_key, {}).get("buckets", [])
+
+        result: Dict[str, Any] = {
+            "host": agent_name,
+            "time_range": time_range,
+            "total_events": total,
+            "agent_id": (buckets("agent_id") or [{}])[0].get("key"),
+            "agent_ip": (buckets("agent_ip") or [{}])[0].get("key"),
+        }
+
+        # Severity distribution
+        result["severity_distribution"] = {
+            b["key"]: b["doc_count"] for b in buckets("severity")
+        }
+
+        # High severity events
+        high_hits = high_sev.get("hits", {}).get("hits", [])
+        result["high_severity_events"] = [
+            {
+                "timestamp": h["_source"].get("@timestamp"),
+                "rule_id": h["_source"].get("rule", {}).get("id"),
+                "rule_level": h["_source"].get("rule", {}).get("level"),
+                "rule_description": h["_source"].get("rule", {}).get("description"),
+                "rule_groups": h["_source"].get("rule", {}).get("groups"),
+                "full_log": (h["_source"].get("full_log") or "")[:300],
+                "src_ip": h["_source"].get("data", {}).get("srcip"),
+            }
+            for h in high_hits
+        ]
+
+        # Executables from syscheck BAM registry
+        exe_hits = executables.get("hits", {}).get("hits", [])
+        seen_exe: set = set()
+        exe_list = []
+        for h in exe_hits:
+            sc = h["_source"].get("syscheck", {})
+            val = sc.get("value_name", "")
+            exe_name = val.split("\\")[-1] if "\\" in val else val
+            key = f"{exe_name}|{sc.get('event', '')}"
+            if key not in seen_exe:
+                seen_exe.add(key)
+                exe_list.append({
+                    "timestamp": h["_source"].get("@timestamp"),
+                    "exe_name": exe_name,
+                    "full_path": val,
+                    "event": sc.get("event"),
+                    "sha256": sc.get("sha256_after"),
+                })
+        result["executables"] = exe_list
+
+        # Registry changes
+        reg_aggs = registry.get("aggregations", {})
+        result["registry_changes"] = {
+            "by_event": {b["key"]: b["doc_count"] for b in reg_aggs.get("by_event", {}).get("buckets", [])},
+            "by_path": {b["key"]: b["doc_count"] for b in reg_aggs.get("by_path", {}).get("buckets", [])},
+        }
+
+        # Login activity
+        login_aggs = logins.get("aggregations", {})
+        result["login_activity"] = {
+            "by_user": {b["key"]: b["doc_count"] for b in login_aggs.get("by_user", {}).get("buckets", [])},
+            "by_src_ip": {b["key"]: b["doc_count"] for b in login_aggs.get("by_src_ip", {}).get("buckets", [])},
+        }
+
+        # Top rules
+        result["top_rules"] = [
+            {"rule": b["key"], "count": b["doc_count"]} for b in buckets("top_rules")
+        ]
+
+        # Activity timeline (non-zero buckets only)
+        result["activity_timeline"] = [
+            {"time": b["key_as_string"], "count": b["doc_count"]}
+            for b in buckets("timeline")
+            if b["doc_count"] > 0
+        ]
+
+        return result
+
+    async def run_query(
+        self,
+        body: Dict[str, Any],
+        index: str = "wazuh-alerts-*",
+        path_suffix: str = "_search",
+    ) -> Dict[str, Any]:
+        """
+        Execute a raw OpenSearch DSL query against any index.
+
+        Args:
+            body: OpenSearch query DSL as a dict.
+            index: Index pattern to query (default: wazuh-alerts-*).
+            path_suffix: API path suffix, e.g. '_search', '_count', '_mapping'.
+        """
+        await self._ensure_initialized()
+
+        url = f"{self.base_url}/{index}/{path_suffix}"
+        try:
+            if body:
+                response = await self.client.post(
+                    url, json=body, headers={"Content-Type": "application/json"}
+                )
+            else:
+                response = await self.client.get(url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            raise ValueError(
+                f"OpenSearch query failed: {e.response.status_code} - {e.response.text}"
+            )
+        except httpx.ConnectError:
+            raise ConnectionError(
+                f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}"
+            )
 
     async def health_check(self) -> Dict[str, Any]:
         """

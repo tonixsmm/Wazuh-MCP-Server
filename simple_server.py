@@ -40,6 +40,7 @@ HTTP deployment:
   # → binds at http://0.0.0.0:8000/mcp
 """
 
+import functools
 import json
 import os
 import sys
@@ -53,6 +54,14 @@ from fastmcp import FastMCP
 from wazuh_mcp_server.config import WazuhConfig
 from wazuh_mcp_server.api.wazuh_client import WazuhClient
 from wazuh_mcp_server.api.wazuh_indexer import IndexerNotConfiguredError
+from usage_tracker import UsageTracker
+
+# Default usage log to repo root if not set by the caller
+if not os.environ.get("USAGE_LOG_PATH"):
+    os.environ["USAGE_LOG_PATH"] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "wazuh_mcp_usage.json"
+    )
+_tracker = UsageTracker()
 
 # ---------------------------------------------------------------------------
 # Global client — initialised in lifespan, used by all tool functions
@@ -93,11 +102,38 @@ def _client() -> WazuhClient:
     return _wazuh_client
 
 
+def with_usage_tracking(fn):
+    """Append a token-usage footer to every tool response."""
+    @functools.wraps(fn)
+    async def wrapper(*args, **kwargs) -> str:
+        result: str = await fn(*args, **kwargs)
+        try:
+            input_text = json.dumps(kwargs)
+            info = _tracker.record(fn.__name__, input_text, result)
+            call_tok = info.get("call_tokens", 0)
+            sess_tok  = info.get("session_tokens", 0)
+            limit     = _tracker.soft_limit
+            sess_pct  = (sess_tok / limit * 100) if limit else 0.0
+            footer = (
+                f"\n\n---\n"
+                f"📊 Usage: {call_tok} tokens this call | "
+                f"Session: {sess_tok:,} / {limit:,} ({sess_pct:.1f}%)"
+            )
+            warning = info.get("warning")
+            if warning:
+                footer += f"\n{warning}"
+            return result + footer
+        except Exception:
+            return result  # never let tracking break a tool
+    return wrapper
+
+
 # ---------------------------------------------------------------------------
 # Alerts (4 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_alerts(
     limit: int = 100,
     rule_id: Optional[str] = None,
@@ -112,19 +148,19 @@ async def get_wazuh_alerts(
         level: Filter alerts by severity level (e.g. "10" or "10-15" for a range).
         agent_id: Filter alerts by agent ID.
     """
-    c = _client()
-    if c._indexer_client is None:
-        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
-    result = await c._indexer_client.get_alerts(
-        limit=limit,
-        rule_id=rule_id,
-        level=level,
-        agent_id=agent_id,
-    )
+    params: dict = {"limit": limit}
+    if rule_id is not None:
+        params["rule.id"] = rule_id
+    if level is not None:
+        params["level"] = level
+    if agent_id is not None:
+        params["agent.id"] = agent_id
+    result = await _client().get_alerts(**params)
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_alert_summary(
     time_range: str = "24h",
     group_by: str = "rule.description",
@@ -135,14 +171,12 @@ async def get_wazuh_alert_summary(
         time_range: Time window to summarise (e.g. "1h", "24h", "7d").
         group_by: Field to group results by (default "rule.description").
     """
-    c = _client()
-    if c._indexer_client is None:
-        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
-    result = await c._indexer_client.get_alert_summary(time_range=time_range, group_by=group_by)
+    result = await _client().get_alert_summary(time_range=time_range, group_by=group_by)
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
+@with_usage_tracking
 async def analyze_alert_patterns(
     time_range: str = "24h",
     min_frequency: int = 5,
@@ -153,10 +187,7 @@ async def analyze_alert_patterns(
         time_range: Time window to analyze (e.g. "1h", "24h", "7d").
         min_frequency: Minimum number of occurrences for a pattern to be included.
     """
-    c = _client()
-    if c._indexer_client is None:
-        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
-    result = await c._indexer_client.analyze_alert_patterns(
+    result = await _client().analyze_alert_patterns(
         time_range=time_range,
         min_frequency=min_frequency,
     )
@@ -164,6 +195,7 @@ async def analyze_alert_patterns(
 
 
 @mcp.tool
+@with_usage_tracking
 async def search_security_events(
     query: str,
     time_range: str = "24h",
@@ -172,14 +204,11 @@ async def search_security_events(
     """Full-text search across Wazuh security events.
 
     Args:
-        query: Search query string (Lucene/OpenSearch syntax supported).
+        query: Search query string (supports Wazuh query syntax).
         time_range: Time window to search within (e.g. "1h", "24h", "7d").
         limit: Maximum number of results to return.
     """
-    c = _client()
-    if c._indexer_client is None:
-        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
-    result = await c._indexer_client.search_security_events(
+    result = await _client().search_security_events(
         query=query,
         time_range=time_range,
         limit=limit,
@@ -192,6 +221,7 @@ async def search_security_events(
 # ---------------------------------------------------------------------------
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_agents(
     status: Optional[str] = None,
     limit: int = 100,
@@ -214,6 +244,7 @@ async def get_wazuh_agents(
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_running_agents() -> str:
     """List all currently active (running) Wazuh agents."""
     result = await _client().get_running_agents()
@@ -221,6 +252,7 @@ async def get_wazuh_running_agents() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def check_agent_health(agent_id: str) -> str:
     """Check the health status of a specific Wazuh agent.
 
@@ -232,6 +264,7 @@ async def check_agent_health(agent_id: str) -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_agent_processes(
     agent_id: str,
     limit: int = 100,
@@ -247,6 +280,7 @@ async def get_agent_processes(
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_agent_ports(
     agent_id: str,
     limit: int = 100,
@@ -262,6 +296,7 @@ async def get_agent_ports(
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_agent_configuration(agent_id: str) -> str:
     """Retrieve the effective configuration of a Wazuh agent.
 
@@ -277,6 +312,7 @@ async def get_agent_configuration(agent_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_vulnerabilities(
     agent_id: Optional[str] = None,
     severity: Optional[str] = None,
@@ -307,6 +343,7 @@ async def get_wazuh_vulnerabilities(
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_critical_vulnerabilities(limit: int = 100) -> str:
     """Retrieve critical-severity vulnerabilities from the Wazuh Indexer.
 
@@ -326,6 +363,7 @@ async def get_wazuh_critical_vulnerabilities(limit: int = 100) -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_vulnerability_summary(time_range: str = "24h") -> str:
     """Get a summary of vulnerability counts by severity from the Wazuh Indexer.
 
@@ -349,6 +387,7 @@ async def get_wazuh_vulnerability_summary(time_range: str = "24h") -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool
+@with_usage_tracking
 async def analyze_security_threat(
     indicator: str,
     indicator_type: str = "ip",
@@ -367,6 +406,7 @@ async def analyze_security_threat(
 
 
 @mcp.tool
+@with_usage_tracking
 async def check_ioc_reputation(
     indicator: str,
     indicator_type: str = "ip",
@@ -385,6 +425,7 @@ async def check_ioc_reputation(
 
 
 @mcp.tool
+@with_usage_tracking
 async def perform_risk_assessment(agent_id: Optional[str] = None) -> str:
     """Perform a risk assessment for an agent or the entire environment.
 
@@ -396,6 +437,7 @@ async def perform_risk_assessment(agent_id: Optional[str] = None) -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_top_security_threats(
     limit: int = 10,
     time_range: str = "24h",
@@ -414,6 +456,7 @@ async def get_top_security_threats(
 
 
 @mcp.tool
+@with_usage_tracking
 async def generate_security_report(
     report_type: str = "executive",
     include_recommendations: bool = True,
@@ -432,6 +475,7 @@ async def generate_security_report(
 
 
 @mcp.tool
+@with_usage_tracking
 async def run_compliance_check(
     framework: str,
     agent_id: Optional[str] = None,
@@ -454,6 +498,7 @@ async def run_compliance_check(
 # ---------------------------------------------------------------------------
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_statistics() -> str:
     """Get overall Wazuh manager statistics (events processed, queue usage, etc.)."""
     result = await _client().get_wazuh_statistics()
@@ -461,6 +506,7 @@ async def get_wazuh_statistics() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_weekly_stats() -> str:
     """Get weekly statistical summary from the Wazuh manager."""
     result = await _client().get_weekly_stats()
@@ -468,6 +514,7 @@ async def get_wazuh_weekly_stats() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_cluster_health() -> str:
     """Get the health status of the Wazuh cluster."""
     result = await _client().get_cluster_health()
@@ -475,6 +522,7 @@ async def get_wazuh_cluster_health() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_cluster_nodes() -> str:
     """List all nodes in the Wazuh cluster with their status."""
     result = await _client().get_cluster_nodes()
@@ -482,6 +530,7 @@ async def get_wazuh_cluster_nodes() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_rules_summary() -> str:
     """Get a summary of loaded Wazuh detection rules grouped by category."""
     result = await _client().get_rules_summary()
@@ -489,6 +538,7 @@ async def get_wazuh_rules_summary() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_remoted_stats() -> str:
     """Get statistics from the Wazuh remoted daemon (agent communication)."""
     result = await _client().get_remoted_stats()
@@ -496,6 +546,7 @@ async def get_wazuh_remoted_stats() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_log_collector_stats() -> str:
     """Get statistics from the Wazuh log collector daemon."""
     result = await _client().get_log_collector_stats()
@@ -503,6 +554,7 @@ async def get_wazuh_log_collector_stats() -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def search_wazuh_manager_logs(
     query: str,
     limit: int = 100,
@@ -518,6 +570,7 @@ async def search_wazuh_manager_logs(
 
 
 @mcp.tool
+@with_usage_tracking
 async def get_wazuh_manager_error_logs(limit: int = 50) -> str:
     """Retrieve error-level log entries from the Wazuh manager.
 
@@ -529,6 +582,7 @@ async def get_wazuh_manager_error_logs(limit: int = 50) -> str:
 
 
 @mcp.tool
+@with_usage_tracking
 async def validate_wazuh_connection() -> str:
     """Validate the connection to the Wazuh manager and return version/status info."""
     result = await _client().validate_connection()
@@ -540,6 +594,7 @@ async def validate_wazuh_connection() -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool
+@with_usage_tracking
 async def build_incident_timeline(
     agent_id: Optional[str] = None,
     rule_id: Optional[str] = None,
@@ -571,6 +626,88 @@ async def build_incident_timeline(
         limit=limit,
     )
     return json.dumps(result, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Host Investigation & Raw Query (2 tools)
+# ---------------------------------------------------------------------------
+
+@mcp.tool
+@with_usage_tracking
+async def investigate_host(
+    agent_name: str,
+    time_range: str = "7d",
+) -> str:
+    """Deep host investigation across 5 parallel OpenSearch queries.
+
+    Builds a comprehensive picture of activity on a given agent/host covering:
+    severity distribution, high-severity events (level 7+), executables seen
+    via BAM/syscheck registry, registry changes, login activity (successes and
+    failures), top triggered rules, and a 6-hour activity timeline.
+
+    Args:
+        agent_name: Agent/host name to investigate (e.g. 'ai-wazuh').
+        time_range: How far back to search (e.g. '24h', '7d', '30d').
+    """
+    c = _client()
+    if c._indexer_client is None:
+        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
+    result = await c._indexer_client.investigate_host(
+        agent_name=agent_name,
+        time_range=time_range,
+    )
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool
+@with_usage_tracking
+async def run_opensearch_query(
+    body: str,
+    index: str = "wazuh-alerts-*",
+    path_suffix: str = "_search",
+) -> str:
+    """Execute a raw OpenSearch DSL query against any Wazuh index.
+
+    Use this for custom threat hunting, forensic queries, or any search not
+    covered by the other tools. Supports aggregations, filters, and any
+    OpenSearch query DSL construct.
+
+    Args:
+        body: OpenSearch query DSL as a JSON string.
+        index: Index pattern to query (default: wazuh-alerts-*). Other useful
+               patterns: wazuh-states-vulnerabilities-*, wazuh-monitoring-*.
+        path_suffix: API path suffix — '_search' (default), '_count', '_mapping'.
+    """
+    c = _client()
+    if c._indexer_client is None:
+        return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
+    try:
+        import json as _json
+        parsed_body = _json.loads(body)
+    except Exception:
+        return json.dumps({"error": f"Invalid JSON in body: {body[:200]}"})
+    result = await c._indexer_client.run_query(
+        body=parsed_body,
+        index=index,
+        path_suffix=path_suffix,
+    )
+    return json.dumps(result, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Usage meta-tools (not tracked — no @with_usage_tracking)
+# ---------------------------------------------------------------------------
+
+@mcp.tool
+async def get_usage_summary() -> str:
+    """Get token usage summary for this session — tokens consumed, top tools, budget status."""
+    return json.dumps(_tracker.get_summary(), indent=2)
+
+
+@mcp.tool
+async def reset_usage_session() -> str:
+    """Reset the session token counter. All-time total is preserved."""
+    return json.dumps(_tracker.reset_session(), indent=2)
 
 
 # ---------------------------------------------------------------------------

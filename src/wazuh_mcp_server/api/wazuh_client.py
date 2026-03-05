@@ -1,20 +1,4 @@
 """Wazuh API client optimized for Wazuh 4.8.0 to 4.14.x compatibility.
-
-Fixes applied vs original:
-- get_wazuh_statistics      → GET /manager/stats (was /manager/stats/all - fake)
-- get_cluster_health        → GET /cluster/status (was /cluster/health - fake)
-- get_cluster_nodes         → GET /cluster/nodes/info (was /cluster/nodes - wrong)
-- get_rules_summary         → GET /rules aggregation (was /rules/summary - fake)
-- get_log_collector_stats   → GET /manager/stats/remoted (was /manager/stats/logcollector - fake)
-- analyze_security_threat   → Indexer: search_security_events (was /security/threat/analyze - fake)
-- check_ioc_reputation      → Indexer: search alerts + vulns (was /security/ioc/reputation - fake)
-- perform_risk_assessment   → Indexer: aggregate alerts+vulns by agent (was /security/risk - fake)
-- get_top_security_threats  → Indexer: get_alert_summary (was /security/threats/top - fake)
-- generate_security_report  → Indexer: multi-query aggregate (was /security/reports/generate - fake)
-- run_compliance_check      → Indexer: compliance-tagged alert search (was /security/compliance/check - fake)
-- get_alert_summary         → Indexer: get_alert_summary (was /alerts/summary - fake)
-- analyze_alert_patterns    → Indexer: analyze_alert_patterns (was /alerts/patterns - fake)
-- search_security_events    → Indexer: search_security_events (was /security/events - fake)
 """
 
 import asyncio
@@ -185,8 +169,24 @@ class WazuhClient:
     # Alerts
     # -------------------------------------------------------------------------
 
-    async def get_alerts(self, **params) -> Dict[str, Any]:
-        return await self._request("GET", "/alerts", params=params)
+    async def get_alerts(self, limit: int = 100, agent_id: str = None, rule_id: str = None, level: str = None, **params) -> Dict[str, Any]:
+        """Fetch alerts via Indexer (Manager API has no /alerts endpoint)."""
+        indexer = self._require_indexer()
+        result = await indexer.get_alerts(
+            limit=limit,
+            agent_id=agent_id,
+            rule_id=rule_id,
+            level=level,
+        )
+        # Normalize to Manager API format so tool handlers don't break
+        return {
+            "data": {
+                "affected_items": result.get("alerts", []),
+                "total_affected_items": result.get("total", 0),
+                "total_failed_items": 0,
+                "failed_items": []
+            }
+        }
 
     async def get_alert_summary(self, time_range: str, group_by: str) -> Dict[str, Any]:
         """Summarise alerts via Indexer aggregation."""
@@ -226,7 +226,29 @@ class WazuhClient:
         return await self._request("GET", f"/syscollector/{agent_id}/ports", params={"limit": limit})
 
     async def get_agent_configuration(self, agent_id: str) -> Dict[str, Any]:
-        return await self._request("GET", f"/agents/{agent_id}/config/client/client")
+        """
+        Fetch key configuration sections for an agent concurrently.
+        Valid Wazuh 4.x components: agent, logcollector, syscheck, wmodules, com
+        Each section is fetched independently so a single failure does not block the rest.
+        """
+        sections = [
+            ("agent",        "agent"),
+            ("logcollector", "localfile"),
+            ("syscheck",     "syscheck"),
+            ("wmodules",     "wmodules"),
+            ("com",          "active-response"),
+        ]
+
+        async def _fetch(component: str, config: str):
+            try:
+                return component, await self._request(
+                    "GET", f"/agents/{agent_id}/config/{component}/{config}"
+                )
+            except Exception as e:
+                return component, {"error": str(e)}
+
+        results = await asyncio.gather(*[_fetch(c, k) for c, k in sections])
+        return {"agent_id": agent_id, "configuration": {c: r for c, r in results}}
 
     # -------------------------------------------------------------------------
     # Vulnerabilities (Indexer required — Wazuh 4.8.0+)
@@ -374,22 +396,29 @@ class WazuhClient:
         """Check compliance by searching alerts tagged with the framework."""
         indexer = self._require_indexer()
 
-        # Map framework names to Wazuh rule group tags
-        framework_tags = {
-            "pci_dss": "pci_dss",
-            "hipaa": "hipaa",
-            "gdpr": "gdpr",
-            "nist": "nist",
-            "cis": "cis",
+        # Map framework names to their actual Wazuh alert field names
+        framework_fields = {
+            "pci_dss": "rule.pci_dss",
+            "hipaa":   "rule.hipaa",
+            "gdpr":    "rule.gdpr",
+            "nist":    "rule.nist_800_53",
+            "cis":     "rule.tsc",   # CIS maps loosely to TSC in Wazuh
         }
-        tag = framework_tags.get(framework.lower(), framework.lower())
+        field = framework_fields.get(framework.lower())
+        if not field:
+            field = f"rule.{framework.lower()}"
 
-        query = f"rule.groups:{tag}"
+        filter_clauses = [
+            {"exists": {"field": field}},
+            {"range": {"@timestamp": {"gte": "now-30d"}}},
+        ]
         if agent_id:
-            query += f" AND agent.id:{agent_id}"
+            filter_clauses.append({"match": {"agent.id": agent_id}})
 
-        results = await indexer.search_security_events(
-            query=query, time_range="30d", limit=200
+        results = await indexer._search(
+            "wazuh-alerts-*",
+            {"bool": {"filter": filter_clauses}},
+            size=200,
         )
         total = results.get("total", 0)
 
