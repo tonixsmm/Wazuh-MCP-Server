@@ -1,9 +1,9 @@
 {
   "student_id": "user",
   "session_start": "2026-03-05T08:37:11.942828+00:00",
-  "last_updated": "2026-03-05T08:49:24.633478+00:00",
-  "session_tokens": 9042,
-  "total_tokens": 108946,
+  "last_updated": "2026-03-05T16:26:34.393611+00:00",
+  "session_tokens": 38988,
+  "total_tokens": 138892,
   "soft_limit": 50000,
   "warn_threshold": 0.9,
   "calls": [
@@ -894,6 +894,70 @@
       "output_tokens": 4483,
       "call_tokens": 4498,
       "session_running_total": 9042
+    },
+    {
+      "ts": "2026-03-05T09:09:25.852513+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 15,
+      "output_tokens": 8832,
+      "call_tokens": 8847,
+      "session_running_total": 17889
+    },
+    {
+      "ts": "2026-03-05T09:10:43.344428+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 97,
+      "output_tokens": 62,
+      "call_tokens": 159,
+      "session_running_total": 18048
+    },
+    {
+      "ts": "2026-03-05T09:10:46.912852+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 96,
+      "output_tokens": 62,
+      "call_tokens": 158,
+      "session_running_total": 18206
+    },
+    {
+      "ts": "2026-03-05T09:10:49.503150+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 52,
+      "output_tokens": 267,
+      "call_tokens": 319,
+      "session_running_total": 18525
+    },
+    {
+      "ts": "2026-03-05T09:35:33.383258+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 18785
+    },
+    {
+      "ts": "2026-03-05T09:35:45.126143+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 157,
+      "output_tokens": 13371,
+      "call_tokens": 13528,
+      "session_running_total": 32313
+    },
+    {
+      "ts": "2026-03-05T16:26:29.182776+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 137,
+      "output_tokens": 659,
+      "call_tokens": 796,
+      "session_running_total": 33109
+    },
+    {
+      "ts": "2026-03-05T16:26:34.393592+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 135,
+      "output_tokens": 5744,
+      "call_tokens": 5879,
+      "session_running_total": 38988
     }
   ]
 }
