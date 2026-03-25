@@ -169,7 +169,7 @@ class WazuhClient:
     # Alerts
     # -------------------------------------------------------------------------
 
-    async def get_alerts(self, limit: int = 100, agent_id: str = None, rule_id: str = None, level: str = None, index: str = "wazuh-alerts-*", **params) -> Dict[str, Any]:
+    async def get_alerts(self, limit: int = 100, agent_id: str = None, rule_id: str = None, level: str = None, time_range: str = "24h", index: str = "wazuh-alerts-*", **params) -> Dict[str, Any]:
         """Fetch alerts via Indexer (Manager API has no /alerts endpoint)."""
         indexer = self._require_indexer()
         result = await indexer.get_alerts(
@@ -177,6 +177,7 @@ class WazuhClient:
             agent_id=agent_id,
             rule_id=rule_id,
             level=level,
+            time_range=time_range,
             index=index,
         )
         # Normalize to Manager API format so tool handlers don't break

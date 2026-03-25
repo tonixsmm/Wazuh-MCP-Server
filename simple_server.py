@@ -44,6 +44,7 @@ import functools
 import json
 import os
 import sys
+from collections import Counter
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
@@ -129,29 +130,167 @@ def with_usage_tracking(fn):
 
 
 # ---------------------------------------------------------------------------
+# Guardrail constants & helpers
+# ---------------------------------------------------------------------------
+
+MAX_RAW_RESULTS = 500
+_ALERT_SUMMARY_THRESHOLD = 50
+
+
+def _truncation_notice(returned: int, total: int) -> str:
+    """Append-friendly notice when results are capped."""
+    return (
+        f"\n\n[TRUNCATED] Showing {returned} of {total:,} total results. "
+        "Narrow your query with filters (agent_name, rule_level, rule_id, "
+        "time range) to see more specific data."
+    )
+
+
+def _build_alert_summary(alerts: list, total: int) -> dict:
+    """Build a compact summary dict from a list of raw alert dicts."""
+    rule_ids: Counter = Counter()
+    agents: Counter = Counter()
+    mitre_techniques: Counter = Counter()
+    severity_buckets = {
+        "Critical(12+)": 0,
+        "High(8-11)": 0,
+        "Medium(4-7)": 0,
+        "Low(1-3)": 0,
+    }
+    timestamps: list = []
+
+    for alert in alerts:
+        rule = alert.get("rule", {})
+        agent = alert.get("agent", {})
+
+        rid = rule.get("id")
+        if rid:
+            rule_ids[rid] += 1
+
+        aname = agent.get("name") or agent.get("id")
+        if aname:
+            agents[aname] += 1
+
+        lvl = rule.get("level")
+        if isinstance(lvl, (int, float)):
+            if lvl >= 12:
+                severity_buckets["Critical(12+)"] += 1
+            elif lvl >= 8:
+                severity_buckets["High(8-11)"] += 1
+            elif lvl >= 4:
+                severity_buckets["Medium(4-7)"] += 1
+            else:
+                severity_buckets["Low(1-3)"] += 1
+
+        mitre = rule.get("mitre", {})
+        for tid in mitre.get("id") or []:
+            mitre_techniques[tid] += 1
+
+        ts = alert.get("@timestamp") or alert.get("timestamp")
+        if ts:
+            timestamps.append(ts)
+
+    return {
+        "total_alerts": total,
+        "time_range": (
+            f"{min(timestamps)} to {max(timestamps)}" if timestamps else "N/A"
+        ),
+        "top_rule_ids": {
+            rid: cnt for rid, cnt in rule_ids.most_common(10)
+        },
+        "top_agents": {
+            name: cnt for name, cnt in agents.most_common(10)
+        },
+        "severity_breakdown": {
+            k: v for k, v in severity_buckets.items() if v > 0
+        },
+        "top_mitre_techniques": {
+            tid: cnt for tid, cnt in mitre_techniques.most_common(10)
+        },
+    }
+
+
+def _compact_alert(alert: dict) -> dict:
+    """Extract only essential fields from a raw alert document."""
+    out: dict = {}
+    ts = alert.get("@timestamp") or alert.get("timestamp")
+    if ts:
+        out["timestamp"] = ts
+
+    rule = alert.get("rule", {})
+    if rule.get("id"):
+        out["rule.id"] = rule["id"]
+    if rule.get("level") is not None:
+        out["rule.level"] = rule["level"]
+    if rule.get("description"):
+        out["rule.description"] = rule["description"]
+
+    agent = alert.get("agent", {})
+    if agent.get("name"):
+        out["agent.name"] = agent["name"]
+    if agent.get("id"):
+        out["agent.id"] = agent["id"]
+
+    mitre = rule.get("mitre", {})
+    if mitre.get("id"):
+        out["rule.mitre.id"] = mitre["id"]
+    if mitre.get("tactic"):
+        out["rule.mitre.tactic"] = mitre["tactic"]
+
+    data = alert.get("data", {})
+    for key in ("srcip", "dstip", "srcuser", "dstuser"):
+        if data.get(key):
+            out[f"data.{key}"] = data[key]
+
+    return out
+
+
+def _compact_alerts(alerts: list) -> list:
+    """Apply _compact_alert to a list of alert dicts."""
+    return [_compact_alert(a) for a in alerts]
+
+
+# ---------------------------------------------------------------------------
 # Alerts (4 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_alerts(
-    limit: int = 100,
+    limit: int = 500,
     rule_id: Optional[str] = None,
     level: Optional[str] = None,
     agent_id: Optional[str] = None,
+    time_range: str = "4h",
+    compact: bool = False,
     include_imports: bool = False,
 ) -> str:
-    """Retrieve Wazuh security alerts.
+    """Retrieve raw Wazuh security alert documents.
+
+    [Context cost: HIGH -- returns up to 500 raw alert documents]
+
+    When to use: You need raw alert details (full_log, source IPs, rule info)
+    for a specific, filtered investigation. Always specify filters to keep
+    results focused. Use compact=True for initial investigation to save context.
+    Use compact=False only when you need full alert details for a small number
+    of specific alerts.
+
+    When NOT to use: For initial triage or high-level overview, use
+    get_wazuh_alert_summary (LOW cost, aggregated counts) or
+    analyze_alert_patterns (MEDIUM cost, recurring patterns) instead.
 
     Args:
-        limit: Maximum number of alerts to return (default 100, max 1000).
+        limit: Maximum alerts to return (default 500, capped at 500).
         rule_id: Filter alerts by Wazuh rule ID.
-        level: Filter alerts by severity level (e.g. "10" or "10-15" for a range).
+        level: Filter by severity level (e.g. "10" or "10-15" for a range).
         agent_id: Filter alerts by agent ID.
-        include_imports: Also search wazuh-import-* indices (imported historical logs).
+        time_range: Time window (e.g. "1h", "4h", "24h", "7d"). Default "4h".
+        compact: If True, return only key fields per alert (~80% smaller).
+        include_imports: Also search wazuh-import-* indices.
     """
+    effective_limit = min(limit, MAX_RAW_RESULTS)
     index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
-    params: dict = {"limit": limit, "index": index}
+    params: dict = {"limit": effective_limit, "index": index, "time_range": time_range}
     if rule_id is not None:
         params["rule.id"] = rule_id
     if level is not None:
@@ -159,7 +298,35 @@ async def get_wazuh_alerts(
     if agent_id is not None:
         params["agent.id"] = agent_id
     result = await _client().get_alerts(**params)
-    return json.dumps(result, indent=2)
+
+    alerts = result.get("data", {}).get("affected_items", [])
+    total = result.get("data", {}).get("total_affected_items", len(alerts))
+
+    # Task 4: summarization when >50 alerts
+    if len(alerts) > _ALERT_SUMMARY_THRESHOLD:
+        summary = _build_alert_summary(alerts, total)
+        result["data"]["summary"] = summary
+        result["data"]["affected_items"] = alerts[:_ALERT_SUMMARY_THRESHOLD]
+        result["data"]["showing"] = _ALERT_SUMMARY_THRESHOLD
+
+    # Task 5: compact mode
+    if compact:
+        result["data"]["affected_items"] = _compact_alerts(
+            result["data"]["affected_items"]
+        )
+        result["data"]["response_mode"] = "compact"
+
+    output = json.dumps(result, indent=2)
+
+    # Truncation notice
+    shown = result["data"].get("showing", len(result["data"]["affected_items"]))
+    if total > shown:
+        output += (
+            f"\n\n[Showing {shown} of {total:,} alerts. "
+            "Use filters to narrow: agent_id, rule_id, level, or a tighter time_range.]"
+        )
+
+    return output
 
 
 @mcp.tool
@@ -171,10 +338,19 @@ async def get_wazuh_alert_summary(
 ) -> str:
     """Get a summary of Wazuh alerts grouped by a field.
 
+    [Context cost: LOW -- returns aggregated counts, not raw alerts]
+
+    When to use: Use this FIRST for initial triage. Returns grouped counts
+    by rule, severity level, and agent. Cheapest way to understand the alert
+    landscape before drilling into specifics.
+
+    When NOT to use: If you need raw alert details, use get_wazuh_alerts
+    after reviewing this summary.
+
     Args:
         time_range: Time window to summarise (e.g. "1h", "24h", "7d").
         group_by: Field to group results by (default "rule.description").
-        include_imports: Also search wazuh-import-* indices (imported historical logs).
+        include_imports: Also search wazuh-import-* indices.
     """
     index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().get_alert_summary(time_range=time_range, group_by=group_by, index=index)
@@ -190,10 +366,18 @@ async def analyze_alert_patterns(
 ) -> str:
     """Analyze recurring alert patterns to surface high-signal security events.
 
+    [Context cost: MEDIUM -- returns pattern analysis, not raw alerts]
+
+    When to use: For identifying recurring patterns and noisy rules before
+    drilling into specifics. Good second step after get_wazuh_alert_summary.
+
+    When NOT to use: If you need raw alerts, use get_wazuh_alerts. If you
+    just need counts, use get_wazuh_alert_summary.
+
     Args:
         time_range: Time window to analyze (e.g. "1h", "24h", "7d").
-        min_frequency: Minimum number of occurrences for a pattern to be included.
-        include_imports: Also search wazuh-import-* indices (imported historical logs).
+        min_frequency: Minimum occurrences for a pattern to be included.
+        include_imports: Also search wazuh-import-* indices.
     """
     index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().analyze_alert_patterns(
@@ -209,25 +393,62 @@ async def analyze_alert_patterns(
 async def search_security_events(
     query: str,
     time_range: str = "24h",
-    limit: int = 100,
+    limit: int = 500,
+    compact: bool = False,
     include_imports: bool = False,
 ) -> str:
     """Full-text search across Wazuh security events.
 
+    [Context cost: HIGH -- returns up to 500 matching event documents]
+
+    When to use: You need to search alerts by keyword or phrase (e.g. "ssh AND
+    failed", "mimikatz", a specific IP). Always include a specific search term.
+    Use compact=True for initial investigation to save context.
+
+    When NOT to use: For broad overview without a search term, use
+    get_wazuh_alert_summary or analyze_alert_patterns instead. Never use
+    broad/empty queries -- they return massive payloads.
+
     Args:
-        query: Search query string (supports Wazuh query syntax).
+        query: Search query string (supports Lucene syntax, e.g. "ssh AND failed").
         time_range: Time window to search within (e.g. "1h", "24h", "7d").
-        limit: Maximum number of results to return.
-        include_imports: Also search wazuh-import-* indices (imported historical logs).
+        limit: Maximum results to return (default 500, capped at 500).
+        compact: If True, return only key fields per event (~80% smaller).
+        include_imports: Also search wazuh-import-* indices.
     """
+    effective_limit = min(limit, MAX_RAW_RESULTS)
     index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().search_security_events(
         query=query,
         time_range=time_range,
-        limit=limit,
+        limit=effective_limit,
         index=index,
     )
-    return json.dumps(result, indent=2)
+
+    total = result.get("total", 0)
+    results_list = result.get("results", [])
+
+    if compact:
+        compacted = []
+        for r in results_list:
+            compacted.append({
+                "timestamp": r.get("timestamp"),
+                "rule_id": r.get("rule_id"),
+                "level": r.get("rule_level"),
+                "description": r.get("rule_description"),
+                "agent": r.get("agent_name"),
+                "agent_id": r.get("agent_id"),
+                "src_ip": r.get("src_ip"),
+            })
+        result["results"] = compacted
+        result["response_mode"] = "compact"
+
+    output = json.dumps(result, indent=2)
+
+    if total > len(results_list):
+        output += _truncation_notice(len(results_list), total)
+
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -241,10 +462,15 @@ async def get_wazuh_agents(
     limit: int = 100,
     agent_id: Optional[str] = None,
 ) -> str:
-    """List Wazuh agents.
+    """List Wazuh agents with optional status filter.
+
+    [Context cost: LOW -- returns agent metadata, not alert data]
+
+    When to use: To discover agent IDs/names, check which agents are
+    registered, or filter by connection status.
 
     Args:
-        status: Filter by agent status ("active", "disconnected", "never_connected", "pending").
+        status: Filter by status ("active", "disconnected", "never_connected", "pending").
         limit: Maximum number of agents to return.
         agent_id: Retrieve a specific agent by ID.
     """
@@ -260,7 +486,11 @@ async def get_wazuh_agents(
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_running_agents() -> str:
-    """List all currently active (running) Wazuh agents."""
+    """List all currently active (running) Wazuh agents.
+
+    [Context cost: LOW -- returns only active agent metadata]
+
+    When to use: Quick check of which agents are currently online."""
     result = await _client().get_running_agents()
     return json.dumps(result, indent=2)
 
@@ -269,6 +499,10 @@ async def get_wazuh_running_agents() -> str:
 @with_usage_tracking
 async def check_agent_health(agent_id: str) -> str:
     """Check the health status of a specific Wazuh agent.
+
+    [Context cost: LOW -- returns single agent status]
+
+    When to use: Verify a specific agent is connected and healthy.
 
     Args:
         agent_id: The Wazuh agent ID to check (e.g. "001").
@@ -284,6 +518,10 @@ async def get_agent_processes(
     limit: int = 100,
 ) -> str:
     """Get the running processes on a Wazuh agent via syscollector.
+
+    [Context cost: HIGH -- can return up to 100 process entries]
+
+    When to use: During host investigation to identify suspicious processes.
 
     Args:
         agent_id: The Wazuh agent ID.
@@ -301,6 +539,10 @@ async def get_agent_ports(
 ) -> str:
     """Get the open network ports on a Wazuh agent via syscollector.
 
+    [Context cost: MEDIUM -- returns port/protocol list for one agent]
+
+    When to use: During host investigation to check for unexpected open ports.
+
     Args:
         agent_id: The Wazuh agent ID.
         limit: Maximum number of port entries to return.
@@ -313,6 +555,11 @@ async def get_agent_ports(
 @with_usage_tracking
 async def get_agent_configuration(agent_id: str) -> str:
     """Retrieve the effective configuration of a Wazuh agent.
+
+    [Context cost: MEDIUM -- returns config sections for one agent]
+
+    When to use: To audit an agent's configuration (log collection, syscheck,
+    active response). Useful when verifying detection coverage.
 
     Args:
         agent_id: The Wazuh agent ID.
@@ -330,25 +577,39 @@ async def get_agent_configuration(agent_id: str) -> str:
 async def get_wazuh_vulnerabilities(
     agent_id: Optional[str] = None,
     severity: Optional[str] = None,
-    limit: int = 100,
+    limit: int = 500,
 ) -> str:
-    """Retrieve vulnerability data from the Wazuh Indexer (Wazuh 4.8.0+).
+    """Retrieve raw vulnerability records from the Wazuh Indexer (Wazuh 4.8.0+).
 
-    Requires WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS
-    environment variables to be set.
+    [Context cost: HIGH -- returns up to 500 vulnerability documents]
+
+    When to use: You need detailed vulnerability records for a specific agent
+    or severity. Always filter by agent_id and/or severity.
+
+    When NOT to use: For an overview of vulnerability counts by severity, use
+    get_wazuh_vulnerability_summary first (LOW cost). Only drill into raw
+    records after reviewing the summary.
+
+    Requires WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS.
 
     Args:
         agent_id: Filter vulnerabilities for a specific agent.
-        severity: Filter by severity level ("critical", "high", "medium", "low").
-        limit: Maximum number of vulnerabilities to return.
+        severity: Filter by severity ("critical", "high", "medium", "low").
+        limit: Maximum vulnerabilities to return (default 500, capped at 500).
     """
+    effective_limit = min(limit, MAX_RAW_RESULTS)
     try:
         result = await _client().get_vulnerabilities(
             agent_id=agent_id,
             severity=severity,
-            limit=limit,
+            limit=effective_limit,
         )
-        return json.dumps(result, indent=2)
+        total = result.get("data", {}).get("total_affected_items", 0)
+        returned = len(result.get("data", {}).get("affected_items", []))
+        output = json.dumps(result, indent=2)
+        if total > returned:
+            output += _truncation_notice(returned, total)
+        return output
     except IndexerNotConfiguredError:
         return json.dumps({
             "error": "Wazuh Indexer not configured. "
@@ -358,17 +619,31 @@ async def get_wazuh_vulnerabilities(
 
 @mcp.tool
 @with_usage_tracking
-async def get_wazuh_critical_vulnerabilities(limit: int = 100) -> str:
+async def get_wazuh_critical_vulnerabilities(limit: int = 500) -> str:
     """Retrieve critical-severity vulnerabilities from the Wazuh Indexer.
+
+    [Context cost: HIGH -- returns up to 500 critical vulnerability records]
+
+    When to use: You need the list of critical vulnerabilities after reviewing
+    get_wazuh_vulnerability_summary and confirming critical vulns exist.
+
+    When NOT to use: For an overview first, use get_wazuh_vulnerability_summary
+    (LOW cost).
 
     Requires WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS.
 
     Args:
-        limit: Maximum number of critical vulnerabilities to return.
+        limit: Maximum critical vulnerabilities to return (default 500, capped at 500).
     """
+    effective_limit = min(limit, MAX_RAW_RESULTS)
     try:
-        result = await _client().get_critical_vulnerabilities(limit=limit)
-        return json.dumps(result, indent=2)
+        result = await _client().get_critical_vulnerabilities(limit=effective_limit)
+        total = result.get("data", {}).get("total_affected_items", 0)
+        returned = len(result.get("data", {}).get("affected_items", []))
+        output = json.dumps(result, indent=2)
+        if total > returned:
+            output += _truncation_notice(returned, total)
+        return output
     except IndexerNotConfiguredError:
         return json.dumps({
             "error": "Wazuh Indexer not configured. "
@@ -380,6 +655,15 @@ async def get_wazuh_critical_vulnerabilities(limit: int = 100) -> str:
 @with_usage_tracking
 async def get_wazuh_vulnerability_summary(time_range: str = "24h") -> str:
     """Get a summary of vulnerability counts by severity from the Wazuh Indexer.
+
+    [Context cost: LOW -- returns aggregated counts, not raw records]
+
+    When to use: Use this FIRST before get_wazuh_vulnerabilities or
+    get_wazuh_critical_vulnerabilities. Returns counts by severity level
+    and affected agent count. Cheapest way to assess vulnerability posture.
+
+    When NOT to use: If you need detailed vulnerability records, use
+    get_wazuh_vulnerabilities after reviewing this summary.
 
     Requires WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS.
 
@@ -408,6 +692,11 @@ async def analyze_security_threat(
 ) -> str:
     """Analyze a security threat indicator using Wazuh threat intelligence.
 
+    [Context cost: MEDIUM -- searches alerts for a single indicator]
+
+    When to use: When you have a specific IP, domain, hash, or URL to
+    investigate. Returns matching alerts and vulnerability context.
+
     Args:
         indicator: The threat indicator value (IP, domain, hash, etc.).
         indicator_type: Type of indicator ("ip", "domain", "hash", "url").
@@ -427,6 +716,11 @@ async def check_ioc_reputation(
 ) -> str:
     """Check the reputation of an Indicator of Compromise (IoC).
 
+    [Context cost: MEDIUM -- searches 30d of alerts for one indicator]
+
+    When to use: When you have a specific IoC and want to know how often
+    it appears in alerts and its reputation classification.
+
     Args:
         indicator: The IoC value to check (IP, domain, file hash, etc.).
         indicator_type: Type of indicator ("ip", "domain", "hash", "url").
@@ -443,6 +737,11 @@ async def check_ioc_reputation(
 async def perform_risk_assessment(agent_id: Optional[str] = None) -> str:
     """Perform a risk assessment for an agent or the entire environment.
 
+    [Context cost: MEDIUM -- aggregates alert and vulnerability data into risk score]
+
+    When to use: To get a risk score and posture summary for an agent or
+    the overall environment. Good for executive-level status checks.
+
     Args:
         agent_id: Agent ID to assess. If omitted, assesses the full environment.
     """
@@ -456,7 +755,12 @@ async def get_top_security_threats(
     limit: int = 10,
     time_range: str = "24h",
 ) -> str:
-    """Get the top security threats detected by Wazuh.
+    """Get the top security threats detected by Wazuh, ranked by frequency.
+
+    [Context cost: LOW -- returns a ranked list of top threat types]
+
+    When to use: Quick overview of the most common threat categories.
+    Good starting point alongside get_wazuh_alert_summary.
 
     Args:
         limit: Number of top threats to return.
@@ -477,6 +781,12 @@ async def generate_security_report(
 ) -> str:
     """Generate a security report from Wazuh data.
 
+    [Context cost: MEDIUM -- aggregates multiple data sources into a report]
+
+    When to use: To produce a structured security report for stakeholders.
+    Choose "executive" for high-level summary, "technical" for detailed
+    findings, "compliance" for framework-aligned output.
+
     Args:
         report_type: Report format ("executive", "technical", "compliance").
         include_recommendations: Whether to include remediation recommendations.
@@ -496,8 +806,13 @@ async def run_compliance_check(
 ) -> str:
     """Run a compliance check against a security framework.
 
+    [Context cost: MEDIUM -- returns compliance status and relevant events]
+
+    When to use: To assess compliance posture against a specific framework.
+    Returns compliance events from the last 30 days.
+
     Args:
-        framework: Compliance framework to check ("pci_dss", "hipaa", "gdpr", "nist", "cis").
+        framework: Framework to check ("pci_dss", "hipaa", "gdpr", "nist", "cis").
         agent_id: Agent ID to check. If omitted, checks the full environment.
     """
     result = await _client().run_compliance_check(
@@ -514,7 +829,9 @@ async def run_compliance_check(
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_statistics() -> str:
-    """Get overall Wazuh manager statistics (events processed, queue usage, etc.)."""
+    """Get overall Wazuh manager statistics (events processed, queue usage, etc.).
+
+    [Context cost: LOW -- returns manager performance metrics]"""
     result = await _client().get_wazuh_statistics()
     return json.dumps(result, indent=2)
 
@@ -522,7 +839,9 @@ async def get_wazuh_statistics() -> str:
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_weekly_stats() -> str:
-    """Get weekly statistical summary from the Wazuh manager."""
+    """Get weekly statistical summary from the Wazuh manager.
+
+    [Context cost: LOW -- returns weekly event counts by day/hour]"""
     result = await _client().get_weekly_stats()
     return json.dumps(result, indent=2)
 
@@ -530,7 +849,9 @@ async def get_wazuh_weekly_stats() -> str:
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_cluster_health() -> str:
-    """Get the health status of the Wazuh cluster."""
+    """Get the health status of the Wazuh cluster.
+
+    [Context cost: LOW -- returns cluster enabled/disabled status and node info]"""
     result = await _client().get_cluster_health()
     return json.dumps(result, indent=2)
 
@@ -538,7 +859,9 @@ async def get_wazuh_cluster_health() -> str:
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_cluster_nodes() -> str:
-    """List all nodes in the Wazuh cluster with their status."""
+    """List all nodes in the Wazuh cluster with their status.
+
+    [Context cost: LOW -- returns cluster node metadata]"""
     result = await _client().get_cluster_nodes()
     return json.dumps(result, indent=2)
 
@@ -546,7 +869,9 @@ async def get_wazuh_cluster_nodes() -> str:
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_rules_summary() -> str:
-    """Get a summary of loaded Wazuh detection rules grouped by category."""
+    """Get a summary of loaded Wazuh detection rules grouped by category.
+
+    [Context cost: MEDIUM -- returns rule file breakdown and total counts]"""
     result = await _client().get_rules_summary()
     return json.dumps(result, indent=2)
 
@@ -554,7 +879,9 @@ async def get_wazuh_rules_summary() -> str:
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_remoted_stats() -> str:
-    """Get statistics from the Wazuh remoted daemon (agent communication)."""
+    """Get statistics from the Wazuh remoted daemon (agent communication).
+
+    [Context cost: LOW -- returns daemon performance counters]"""
     result = await _client().get_remoted_stats()
     return json.dumps(result, indent=2)
 
@@ -562,7 +889,9 @@ async def get_wazuh_remoted_stats() -> str:
 @mcp.tool
 @with_usage_tracking
 async def get_wazuh_log_collector_stats() -> str:
-    """Get statistics from the Wazuh log collector daemon."""
+    """Get statistics from the Wazuh log collector daemon.
+
+    [Context cost: LOW -- returns log collector performance counters]"""
     result = await _client().get_log_collector_stats()
     return json.dumps(result, indent=2)
 
@@ -574,6 +903,11 @@ async def search_wazuh_manager_logs(
     limit: int = 100,
 ) -> str:
     """Search Wazuh manager internal logs.
+
+    [Context cost: HIGH -- can return up to 100 log entries]
+
+    When to use: To search manager logs for specific errors, warnings,
+    or events. Always provide a focused query string.
 
     Args:
         query: Search string to filter log entries.
@@ -588,6 +922,10 @@ async def search_wazuh_manager_logs(
 async def get_wazuh_manager_error_logs(limit: int = 50) -> str:
     """Retrieve error-level log entries from the Wazuh manager.
 
+    [Context cost: MEDIUM -- returns up to 50 error log entries]
+
+    When to use: To check for manager-level errors and operational issues.
+
     Args:
         limit: Maximum number of error log entries to return.
     """
@@ -598,7 +936,9 @@ async def get_wazuh_manager_error_logs(limit: int = 50) -> str:
 @mcp.tool
 @with_usage_tracking
 async def validate_wazuh_connection() -> str:
-    """Validate the connection to the Wazuh manager and return version/status info."""
+    """Validate the connection to the Wazuh manager and return version/status info.
+
+    [Context cost: LOW -- returns connection status and version string]"""
     result = await _client().validate_connection()
     return json.dumps(result, indent=2)
 
@@ -620,9 +960,18 @@ async def build_incident_timeline(
 ) -> str:
     """Build a unified incident timeline correlating alerts and manager logs.
 
+    [Context cost: HIGH -- returns up to 500 timeline events]
+
     Concurrently fetches alerts and manager logs, normalises them into a
     common format, and returns them sorted by timestamp (newest first).
     If one source fails the other's results are still returned.
+
+    When to use: After identifying specific alerts/agents to investigate, build
+    a timeline to understand the sequence of events. Always filter by agent_id,
+    rule_id, or level.
+
+    When NOT to use: For broad exploration, use get_wazuh_alert_summary or
+    analyze_alert_patterns first. This tool is for focused incident investigation.
 
     Args:
         agent_id: Filter timeline events for a specific agent.
@@ -630,9 +979,10 @@ async def build_incident_timeline(
         query: Full-text search query applied to manager logs.
         level: Filter by severity level (applied to both alerts and logs).
         time_range: Time window to cover ("1h", "6h", "24h", "7d").
-        limit: Maximum total events in the returned timeline.
-        include_imports: Also search wazuh-import-* indices (imported historical logs).
+        limit: Maximum total events in the returned timeline (capped at 500).
+        include_imports: Also search wazuh-import-* indices.
     """
+    effective_limit = min(limit, MAX_RAW_RESULTS)
     index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().build_incident_timeline(
         agent_id=agent_id,
@@ -640,10 +990,17 @@ async def build_incident_timeline(
         query=query,
         level=level,
         time_range=time_range,
-        limit=limit,
+        limit=effective_limit,
         index=index,
     )
-    return json.dumps(result, indent=2)
+
+    output = json.dumps(result, indent=2)
+    total = result.get("data", {}).get("summary", {}).get("total_events", 0)
+    timeline_len = len(result.get("data", {}).get("timeline", []))
+    if total > timeline_len:
+        output += _truncation_notice(timeline_len, total)
+
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -655,17 +1012,28 @@ async def build_incident_timeline(
 async def investigate_host(
     agent_name: str,
     time_range: str = "7d",
+    compact: bool = False,
 ) -> str:
     """Deep host investigation across 5 parallel OpenSearch queries.
+
+    [Context cost: VERY HIGH -- runs 5 concurrent queries, returns large composite result]
 
     Builds a comprehensive picture of activity on a given agent/host covering:
     severity distribution, high-severity events (level 7+), executables seen
     via BAM/syscheck registry, registry changes, login activity (successes and
     failures), top triggered rules, and a 6-hour activity timeline.
 
+    When to use: Only for deep-dive on a specific host AFTER initial triage
+    with get_wazuh_alert_summary or analyze_alert_patterns has identified it
+    as suspicious. Use compact=True to reduce payload.
+
+    When NOT to use: For broad exploration across all hosts. Use
+    get_wazuh_alert_summary first, then investigate only flagged hosts.
+
     Args:
         agent_name: Agent/host name to investigate (e.g. 'ai-wazuh').
         time_range: How far back to search (e.g. '24h', '7d', '30d').
+        compact: If True, return only key fields in high_severity_events.
     """
     c = _client()
     if c._indexer_client is None:
@@ -674,7 +1042,30 @@ async def investigate_host(
         agent_name=agent_name,
         time_range=time_range,
     )
-    return json.dumps(result, indent=2)
+
+    if compact and "high_severity_events" in result:
+        compacted = []
+        for e in result["high_severity_events"]:
+            compacted.append({
+                "timestamp": e.get("timestamp"),
+                "rule_id": e.get("rule_id"),
+                "level": e.get("rule_level"),
+                "description": e.get("rule_description"),
+                "src_ip": e.get("src_ip"),
+            })
+        result["high_severity_events"] = compacted
+        result["response_mode"] = "compact"
+
+    output = json.dumps(result, indent=2)
+
+    total_events = result.get("total_events", 0)
+    if total_events > 1000:
+        output += (
+            f"\n\n[Note: {total_events:,} total events for this host. "
+            "Consider narrowing time_range for a more focused investigation.]"
+        )
+
+    return output
 
 
 @mcp.tool
@@ -683,26 +1074,39 @@ async def run_opensearch_query(
     body: str,
     index: str = "wazuh-alerts-*",
     path_suffix: str = "_search",
+    max_response_chars: int = 30000,
+    compact: bool = False,
 ) -> str:
     """Execute a raw OpenSearch DSL query against any Wazuh index.
 
+    [Context cost: VERY HIGH -- returns raw OpenSearch responses, capped at 30K chars]
+
     Use this for custom threat hunting, forensic queries, or any search not
     covered by the other tools. Supports aggregations, filters, and any
-    OpenSearch query DSL construct.
+    OpenSearch query DSL construct. Always include a "size" limit in your
+    DSL query body.
+
+    When to use: As a last resort when other tools cannot express the query
+    you need. Prefer aggregation queries (size: 0) over document fetches.
+    Use compact=True if fetching documents.
+
+    When NOT to use: If get_wazuh_alerts, search_security_events,
+    get_wazuh_alert_summary, or analyze_alert_patterns can answer your
+    question, use those instead -- they have built-in guardrails.
 
     Args:
         body: OpenSearch query DSL as a JSON string.
-        index: Index pattern to query (default: wazuh-alerts-*). Other useful
-               patterns: wazuh-import-* (imported historical logs),
-               wazuh-states-vulnerabilities-*, wazuh-monitoring-*.
-        path_suffix: API path suffix — '_search' (default), '_count', '_mapping'.
+        index: Index pattern (default: wazuh-alerts-*). Others:
+               wazuh-import-*, wazuh-states-vulnerabilities-*, wazuh-monitoring-*.
+        path_suffix: API path suffix -- '_search', '_count', '_mapping'.
+        max_response_chars: Truncate response at this character limit (default 30000).
+        compact: If True, strip hit documents to key fields only.
     """
     c = _client()
     if c._indexer_client is None:
         return json.dumps({"error": "Wazuh Indexer not configured. Set WAZUH_INDEXER_HOST, WAZUH_INDEXER_USER, and WAZUH_INDEXER_PASS."})
     try:
-        import json as _json
-        parsed_body = _json.loads(body)
+        parsed_body = json.loads(body)
     except Exception:
         return json.dumps({"error": f"Invalid JSON in body: {body[:200]}"})
     result = await c._indexer_client.run_query(
@@ -710,7 +1114,36 @@ async def run_opensearch_query(
         index=index,
         path_suffix=path_suffix,
     )
-    return json.dumps(result, indent=2)
+
+    # Compact mode: strip hit _source to key fields
+    if compact and isinstance(result, dict) and "hits" in result:
+        hits = result["hits"].get("hits", [])
+        result["hits"]["hits"] = [
+            {"_source": _compact_alert(h.get("_source", {}))}
+            for h in hits
+        ]
+        result["response_mode"] = "compact"
+
+    output = json.dumps(result, indent=2)
+
+    # Character-level truncation
+    if len(output) > max_response_chars:
+        hit_count = "unknown"
+        if isinstance(result, dict):
+            total = result.get("hits", {}).get("total", {})
+            if isinstance(total, dict):
+                hit_count = total.get("value", "unknown")
+            elif isinstance(total, int):
+                hit_count = total
+        full_len = len(output)
+        output = output[:max_response_chars] + (
+            f"\n\n[RESPONSE TRUNCATED at {max_response_chars:,} chars] "
+            f"Full response was {full_len:,} chars with {hit_count} total hits. "
+            "Use more specific filters or reduce max_results to get complete "
+            "data within context limits."
+        )
+
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -719,13 +1152,17 @@ async def run_opensearch_query(
 
 @mcp.tool
 async def get_usage_summary() -> str:
-    """Get token usage summary for this session — tokens consumed, top tools, budget status."""
+    """Get token usage summary for this session -- tokens consumed, top tools, budget status.
+
+    [Context cost: LOW -- returns session usage metadata]"""
     return json.dumps(_tracker.get_summary(), indent=2)
 
 
 @mcp.tool
 async def reset_usage_session() -> str:
-    """Reset the session token counter. All-time total is preserved."""
+    """Reset the session token counter. All-time total is preserved.
+
+    [Context cost: LOW -- returns reset confirmation]"""
     return json.dumps(_tracker.reset_session(), indent=2)
 
 
