@@ -1,9 +1,9 @@
 {
   "student_id": "user",
-  "session_start": "2026-03-05T08:37:11.942828+00:00",
-  "last_updated": "2026-03-05T16:26:34.393611+00:00",
-  "session_tokens": 38988,
-  "total_tokens": 138892,
+  "session_start": "2026-03-20T15:45:33.588465+00:00",
+  "last_updated": "2026-03-20T19:42:06.702625+00:00",
+  "session_tokens": 540991,
+  "total_tokens": 820761,
   "soft_limit": 50000,
   "warn_threshold": 0.9,
   "calls": [
@@ -958,6 +958,870 @@
       "output_tokens": 5744,
       "call_tokens": 5879,
       "session_running_total": 38988
+    },
+    {
+      "ts": "2026-03-06T19:52:26.280688+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-06T19:52:27.970237+00:00",
+      "tool": "get_wazuh_cluster_health",
+      "input_tokens": 1,
+      "output_tokens": 18,
+      "call_tokens": 19,
+      "session_running_total": 108
+    },
+    {
+      "ts": "2026-03-06T19:52:29.804012+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 368
+    },
+    {
+      "ts": "2026-03-06T19:52:33.460423+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 22,
+      "output_tokens": 531,
+      "call_tokens": 553,
+      "session_running_total": 921
+    },
+    {
+      "ts": "2026-03-06T19:52:35.912585+00:00",
+      "tool": "get_wazuh_manager_error_logs",
+      "input_tokens": 3,
+      "output_tokens": 44,
+      "call_tokens": 47,
+      "session_running_total": 968
+    },
+    {
+      "ts": "2026-03-06T19:52:37.551008+00:00",
+      "tool": "get_wazuh_critical_vulnerabilities",
+      "input_tokens": 3,
+      "output_tokens": 32,
+      "call_tokens": 35,
+      "session_running_total": 1003
+    },
+    {
+      "ts": "2026-03-06T19:53:15.663526+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 23,
+      "output_tokens": 32,
+      "call_tokens": 55,
+      "session_running_total": 1058
+    },
+    {
+      "ts": "2026-03-06T19:53:22.168193+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 18,
+      "output_tokens": 145,
+      "call_tokens": 163,
+      "session_running_total": 1221
+    },
+    {
+      "ts": "2026-03-06T19:53:24.294608+00:00",
+      "tool": "get_top_security_threats",
+      "input_tokens": 8,
+      "output_tokens": 182,
+      "call_tokens": 190,
+      "session_running_total": 1411
+    },
+    {
+      "ts": "2026-03-06T19:53:26.077090+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 22,
+      "output_tokens": 847,
+      "call_tokens": 869,
+      "session_running_total": 2280
+    },
+    {
+      "ts": "2026-03-06T19:54:03.648890+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 18,
+      "output_tokens": 194,
+      "call_tokens": 212,
+      "session_running_total": 2492
+    },
+    {
+      "ts": "2026-03-06T19:54:05.625660+00:00",
+      "tool": "get_top_security_threats",
+      "input_tokens": 8,
+      "output_tokens": 407,
+      "call_tokens": 415,
+      "session_running_total": 2907
+    },
+    {
+      "ts": "2026-03-06T19:54:07.777795+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 22,
+      "output_tokens": 32,
+      "call_tokens": 54,
+      "session_running_total": 2961
+    },
+    {
+      "ts": "2026-03-06T19:54:09.895296+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 22,
+      "output_tokens": 32,
+      "call_tokens": 54,
+      "session_running_total": 3015
+    },
+    {
+      "ts": "2026-03-06T19:54:14.966450+00:00",
+      "tool": "analyze_alert_patterns",
+      "input_tokens": 16,
+      "output_tokens": 747,
+      "call_tokens": 763,
+      "session_running_total": 3778
+    },
+    {
+      "ts": "2026-03-06T19:55:24.900052+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 4038
+    },
+    {
+      "ts": "2026-03-06T19:55:37.279372+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 21,
+      "output_tokens": 8,
+      "call_tokens": 29,
+      "session_running_total": 4067
+    },
+    {
+      "ts": "2026-03-06T19:55:40.285374+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 20,
+      "output_tokens": 8,
+      "call_tokens": 28,
+      "session_running_total": 4095
+    },
+    {
+      "ts": "2026-03-06T19:55:42.788111+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 21,
+      "output_tokens": 8,
+      "call_tokens": 29,
+      "session_running_total": 4124
+    },
+    {
+      "ts": "2026-03-06T19:55:45.570005+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 21,
+      "output_tokens": 8,
+      "call_tokens": 29,
+      "session_running_total": 4153
+    },
+    {
+      "ts": "2026-03-06T19:55:47.853816+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 22,
+      "output_tokens": 6167,
+      "call_tokens": 6189,
+      "session_running_total": 10342
+    },
+    {
+      "ts": "2026-03-06T19:55:58.756774+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 196,
+      "output_tokens": 45464,
+      "call_tokens": 45660,
+      "session_running_total": 56002
+    },
+    {
+      "ts": "2026-03-06T19:56:34.002740+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 160,
+      "output_tokens": 33083,
+      "call_tokens": 33243,
+      "session_running_total": 89245
+    },
+    {
+      "ts": "2026-03-06T20:26:08.967983+00:00",
+      "tool": "build_incident_timeline",
+      "input_tokens": 25,
+      "output_tokens": 4368,
+      "call_tokens": 4393,
+      "session_running_total": 93638
+    },
+    {
+      "ts": "2026-03-20T06:59:17.070603+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-20T07:02:18.528439+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 349
+    },
+    {
+      "ts": "2026-03-20T07:02:27.542652+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 51,
+      "output_tokens": 579,
+      "call_tokens": 630,
+      "session_running_total": 979
+    },
+    {
+      "ts": "2026-03-20T07:02:37.301979+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 113,
+      "output_tokens": 1133,
+      "call_tokens": 1246,
+      "session_running_total": 2225
+    },
+    {
+      "ts": "2026-03-20T07:02:46.648885+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 130,
+      "output_tokens": 1341,
+      "call_tokens": 1471,
+      "session_running_total": 3696
+    },
+    {
+      "ts": "2026-03-20T07:05:26.601939+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 100,
+      "output_tokens": 2476,
+      "call_tokens": 2576,
+      "session_running_total": 6272
+    },
+    {
+      "ts": "2026-03-20T07:05:35.901789+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 126,
+      "output_tokens": 1045,
+      "call_tokens": 1171,
+      "session_running_total": 7443
+    },
+    {
+      "ts": "2026-03-20T07:05:42.868258+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 156,
+      "output_tokens": 1194,
+      "call_tokens": 1350,
+      "session_running_total": 8793
+    },
+    {
+      "ts": "2026-03-20T07:05:49.392584+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 180,
+      "output_tokens": 3076,
+      "call_tokens": 3256,
+      "session_running_total": 12049
+    },
+    {
+      "ts": "2026-03-20T07:05:56.917427+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 157,
+      "output_tokens": 915,
+      "call_tokens": 1072,
+      "session_running_total": 13121
+    },
+    {
+      "ts": "2026-03-20T07:06:04.071479+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 182,
+      "output_tokens": 1709,
+      "call_tokens": 1891,
+      "session_running_total": 15012
+    },
+    {
+      "ts": "2026-03-20T07:06:11.972807+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 114,
+      "output_tokens": 8036,
+      "call_tokens": 8150,
+      "session_running_total": 23162
+    },
+    {
+      "ts": "2026-03-20T07:06:23.994613+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 236,
+      "output_tokens": 3920,
+      "call_tokens": 4156,
+      "session_running_total": 27318
+    },
+    {
+      "ts": "2026-03-20T07:06:30.313701+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 126,
+      "output_tokens": 1645,
+      "call_tokens": 1771,
+      "session_running_total": 29089
+    },
+    {
+      "ts": "2026-03-20T07:06:42.631066+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 170,
+      "output_tokens": 3217,
+      "call_tokens": 3387,
+      "session_running_total": 32476
+    },
+    {
+      "ts": "2026-03-20T07:06:49.714856+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 177,
+      "output_tokens": 1263,
+      "call_tokens": 1440,
+      "session_running_total": 33916
+    },
+    {
+      "ts": "2026-03-20T07:10:10.562385+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 187,
+      "output_tokens": 61,
+      "call_tokens": 248,
+      "session_running_total": 34164
+    },
+    {
+      "ts": "2026-03-20T07:10:15.749525+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 179,
+      "output_tokens": 62,
+      "call_tokens": 241,
+      "session_running_total": 34405
+    },
+    {
+      "ts": "2026-03-20T07:10:19.047418+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 20,
+      "output_tokens": 8,
+      "call_tokens": 28,
+      "session_running_total": 34433
+    },
+    {
+      "ts": "2026-03-20T07:10:22.422010+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 21,
+      "output_tokens": 8,
+      "call_tokens": 29,
+      "session_running_total": 34462
+    },
+    {
+      "ts": "2026-03-20T07:10:25.281582+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 21,
+      "output_tokens": 8,
+      "call_tokens": 29,
+      "session_running_total": 34491
+    },
+    {
+      "ts": "2026-03-20T07:10:28.563628+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 20,
+      "output_tokens": 8,
+      "call_tokens": 28,
+      "session_running_total": 34519
+    },
+    {
+      "ts": "2026-03-20T07:10:31.828232+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 22,
+      "output_tokens": 8,
+      "call_tokens": 30,
+      "session_running_total": 34549
+    },
+    {
+      "ts": "2026-03-20T07:10:44.761290+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 73,
+      "output_tokens": 61,
+      "call_tokens": 134,
+      "session_running_total": 34683
+    },
+    {
+      "ts": "2026-03-20T07:10:48.088351+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 38,
+      "output_tokens": 6802,
+      "call_tokens": 6840,
+      "session_running_total": 41523
+    },
+    {
+      "ts": "2026-03-20T07:10:56.114070+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 82,
+      "output_tokens": 883,
+      "call_tokens": 965,
+      "session_running_total": 42488
+    },
+    {
+      "ts": "2026-03-20T07:18:40.101516+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 20,
+      "call_tokens": 21,
+      "session_running_total": 42509
+    },
+    {
+      "ts": "2026-03-20T07:19:16.847896+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 119,
+      "output_tokens": 4523,
+      "call_tokens": 4642,
+      "session_running_total": 47151
+    },
+    {
+      "ts": "2026-03-20T15:45:08.033646+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-20T15:45:51.281094+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-03-20T15:46:07.918026+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 349
+    },
+    {
+      "ts": "2026-03-20T15:46:15.784007+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 223,
+      "call_tokens": 242,
+      "session_running_total": 591
+    },
+    {
+      "ts": "2026-03-20T15:46:19.286349+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 538,
+      "call_tokens": 557,
+      "session_running_total": 1148
+    },
+    {
+      "ts": "2026-03-20T15:46:28.977556+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 228,
+      "output_tokens": 41882,
+      "call_tokens": 42110,
+      "session_running_total": 43258
+    },
+    {
+      "ts": "2026-03-20T15:48:52.311957+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 18,
+      "output_tokens": 726,
+      "call_tokens": 744,
+      "session_running_total": 44002
+    },
+    {
+      "ts": "2026-03-20T15:48:59.038528+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 170,
+      "output_tokens": 12848,
+      "call_tokens": 13018,
+      "session_running_total": 57020
+    },
+    {
+      "ts": "2026-03-20T15:49:57.362235+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 19,
+      "output_tokens": 18819,
+      "call_tokens": 18838,
+      "session_running_total": 75858
+    },
+    {
+      "ts": "2026-03-20T15:51:20.751271+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 308,
+      "output_tokens": 289,
+      "call_tokens": 597,
+      "session_running_total": 76455
+    },
+    {
+      "ts": "2026-03-20T15:51:26.821891+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 20,
+      "output_tokens": 7905,
+      "call_tokens": 7925,
+      "session_running_total": 84380
+    },
+    {
+      "ts": "2026-03-20T15:51:34.090295+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 28,
+      "output_tokens": 4784,
+      "call_tokens": 4812,
+      "session_running_total": 89192
+    },
+    {
+      "ts": "2026-03-20T15:51:41.626908+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 24,
+      "output_tokens": 2830,
+      "call_tokens": 2854,
+      "session_running_total": 92046
+    },
+    {
+      "ts": "2026-03-20T15:51:49.228771+00:00",
+      "tool": "investigate_host",
+      "input_tokens": 12,
+      "output_tokens": 931,
+      "call_tokens": 943,
+      "session_running_total": 92989
+    },
+    {
+      "ts": "2026-03-20T15:51:54.301461+00:00",
+      "tool": "investigate_host",
+      "input_tokens": 13,
+      "output_tokens": 2351,
+      "call_tokens": 2364,
+      "session_running_total": 95353
+    },
+    {
+      "ts": "2026-03-20T15:52:55.158372+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 22,
+      "output_tokens": 19273,
+      "call_tokens": 19295,
+      "session_running_total": 114648
+    },
+    {
+      "ts": "2026-03-20T15:53:04.308229+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 32,
+      "output_tokens": 6346,
+      "call_tokens": 6378,
+      "session_running_total": 121026
+    },
+    {
+      "ts": "2026-03-20T15:53:50.537309+00:00",
+      "tool": "build_incident_timeline",
+      "input_tokens": 31,
+      "output_tokens": 3627,
+      "call_tokens": 3658,
+      "session_running_total": 124684
+    },
+    {
+      "ts": "2026-03-20T15:53:56.639122+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 22,
+      "output_tokens": 18868,
+      "call_tokens": 18890,
+      "session_running_total": 143574
+    },
+    {
+      "ts": "2026-03-20T15:54:04.307999+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 117,
+      "output_tokens": 1743,
+      "call_tokens": 1860,
+      "session_running_total": 145434
+    },
+    {
+      "ts": "2026-03-20T15:54:10.660921+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 111,
+      "output_tokens": 61,
+      "call_tokens": 172,
+      "session_running_total": 145606
+    },
+    {
+      "ts": "2026-03-20T15:54:16.650047+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 175,
+      "output_tokens": 46151,
+      "call_tokens": 46326,
+      "session_running_total": 191932
+    },
+    {
+      "ts": "2026-03-20T15:54:41.659779+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 201,
+      "output_tokens": 32968,
+      "call_tokens": 33169,
+      "session_running_total": 225101
+    },
+    {
+      "ts": "2026-03-20T15:55:59.653812+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 367,
+      "output_tokens": 69981,
+      "call_tokens": 70348,
+      "session_running_total": 295449
+    },
+    {
+      "ts": "2026-03-20T15:56:39.511134+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 539,
+      "output_tokens": 1221,
+      "call_tokens": 1760,
+      "session_running_total": 297209
+    },
+    {
+      "ts": "2026-03-20T15:56:50.372714+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 357,
+      "output_tokens": 39194,
+      "call_tokens": 39551,
+      "session_running_total": 336760
+    },
+    {
+      "ts": "2026-03-20T15:58:33.762141+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 245,
+      "output_tokens": 22663,
+      "call_tokens": 22908,
+      "session_running_total": 359668
+    },
+    {
+      "ts": "2026-03-20T15:58:42.978312+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 223,
+      "output_tokens": 824,
+      "call_tokens": 1047,
+      "session_running_total": 360715
+    },
+    {
+      "ts": "2026-03-20T15:58:48.545460+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 27,
+      "output_tokens": 416,
+      "call_tokens": 443,
+      "session_running_total": 361158
+    },
+    {
+      "ts": "2026-03-20T15:58:55.509627+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 217,
+      "output_tokens": 10514,
+      "call_tokens": 10731,
+      "session_running_total": 371889
+    },
+    {
+      "ts": "2026-03-20T15:59:32.253942+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 154,
+      "output_tokens": 1015,
+      "call_tokens": 1169,
+      "session_running_total": 373058
+    },
+    {
+      "ts": "2026-03-20T16:13:52.526808+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 373318
+    },
+    {
+      "ts": "2026-03-20T16:13:57.407729+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 220,
+      "call_tokens": 239,
+      "session_running_total": 373557
+    },
+    {
+      "ts": "2026-03-20T16:14:01.180274+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 758,
+      "call_tokens": 777,
+      "session_running_total": 374334
+    },
+    {
+      "ts": "2026-03-20T16:14:11.780120+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 221,
+      "output_tokens": 22763,
+      "call_tokens": 22984,
+      "session_running_total": 397318
+    },
+    {
+      "ts": "2026-03-20T16:15:47.947307+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 198,
+      "output_tokens": 35115,
+      "call_tokens": 35313,
+      "session_running_total": 432631
+    },
+    {
+      "ts": "2026-03-20T16:18:14.503923+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 280,
+      "output_tokens": 6175,
+      "call_tokens": 6455,
+      "session_running_total": 439086
+    },
+    {
+      "ts": "2026-03-20T16:18:22.755515+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 134,
+      "output_tokens": 623,
+      "call_tokens": 757,
+      "session_running_total": 439843
+    },
+    {
+      "ts": "2026-03-20T16:18:29.377420+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 111,
+      "output_tokens": 62,
+      "call_tokens": 173,
+      "session_running_total": 440016
+    },
+    {
+      "ts": "2026-03-20T16:18:34.881694+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 96,
+      "output_tokens": 362,
+      "call_tokens": 458,
+      "session_running_total": 440474
+    },
+    {
+      "ts": "2026-03-20T16:18:42.824745+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 106,
+      "output_tokens": 62,
+      "call_tokens": 168,
+      "session_running_total": 440642
+    },
+    {
+      "ts": "2026-03-20T16:18:48.311754+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 97,
+      "output_tokens": 498,
+      "call_tokens": 595,
+      "session_running_total": 441237
+    },
+    {
+      "ts": "2026-03-20T16:18:55.711450+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 97,
+      "output_tokens": 485,
+      "call_tokens": 582,
+      "session_running_total": 441819
+    },
+    {
+      "ts": "2026-03-20T16:20:52.604681+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 178,
+      "output_tokens": 396,
+      "call_tokens": 574,
+      "session_running_total": 442393
+    },
+    {
+      "ts": "2026-03-20T16:21:02.029835+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 132,
+      "output_tokens": 3345,
+      "call_tokens": 3477,
+      "session_running_total": 445870
+    },
+    {
+      "ts": "2026-03-20T16:22:55.773353+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 147,
+      "output_tokens": 1259,
+      "call_tokens": 1406,
+      "session_running_total": 447276
+    },
+    {
+      "ts": "2026-03-20T16:23:03.235795+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 194,
+      "output_tokens": 5992,
+      "call_tokens": 6186,
+      "session_running_total": 453462
+    },
+    {
+      "ts": "2026-03-20T16:24:38.475634+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 110,
+      "output_tokens": 279,
+      "call_tokens": 389,
+      "session_running_total": 453851
+    },
+    {
+      "ts": "2026-03-20T16:26:07.445747+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 165,
+      "output_tokens": 61,
+      "call_tokens": 226,
+      "session_running_total": 454077
+    },
+    {
+      "ts": "2026-03-20T16:26:13.053125+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 56,
+      "output_tokens": 481,
+      "call_tokens": 537,
+      "session_running_total": 454614
+    },
+    {
+      "ts": "2026-03-20T16:26:22.174711+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 157,
+      "output_tokens": 19019,
+      "call_tokens": 19176,
+      "session_running_total": 473790
+    },
+    {
+      "ts": "2026-03-20T16:26:36.060992+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 152,
+      "output_tokens": 11790,
+      "call_tokens": 11942,
+      "session_running_total": 485732
+    },
+    {
+      "ts": "2026-03-20T16:26:50.117485+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 183,
+      "output_tokens": 9479,
+      "call_tokens": 9662,
+      "session_running_total": 495394
+    },
+    {
+      "ts": "2026-03-20T16:29:32.879215+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 131,
+      "output_tokens": 39707,
+      "call_tokens": 39838,
+      "session_running_total": 535232
+    },
+    {
+      "ts": "2026-03-20T16:30:48.213274+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 124,
+      "output_tokens": 5546,
+      "call_tokens": 5670,
+      "session_running_total": 540902
+    },
+    {
+      "ts": "2026-03-20T19:42:06.702579+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 540991
     }
   ]
 }

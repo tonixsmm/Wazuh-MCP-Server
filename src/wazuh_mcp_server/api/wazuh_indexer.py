@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Vulnerability index pattern for Wazuh 4.8+
 VULNERABILITY_INDEX = "wazuh-states-vulnerabilities-*"
+ALERTS_INDEX = "wazuh-alerts-*"
+IMPORT_INDEX = "wazuh-import-*"
 
 
 class WazuhIndexerClient:
@@ -277,6 +279,7 @@ class WazuhIndexerClient:
         rule_id: Optional[str] = None,
         level: Optional[str] = None,
         time_range: str = "24h",
+        index: str = ALERTS_INDEX,
     ) -> Dict[str, Any]:
         """
         Retrieve alerts from the Wazuh Indexer with optional filters.
@@ -316,7 +319,7 @@ class WazuhIndexerClient:
             "sort": [{"@timestamp": {"order": "desc"}}],
         }
 
-        url = f"{self.base_url}/wazuh-alerts-*/_search"
+        url = f"{self.base_url}/{index}/_search"
         try:
             response = await self.client.post(
                 url, json=body, headers={"Content-Type": "application/json"}
@@ -339,6 +342,7 @@ class WazuhIndexerClient:
         self,
         time_range: str = "24h",
         group_by: str = "rule.description",
+        index: str = ALERTS_INDEX,
     ) -> Dict[str, Any]:
         """
         Summarise alerts via OpenSearch aggregations.
@@ -378,7 +382,7 @@ class WazuhIndexerClient:
             },
         }
 
-        url = f"{self.base_url}/wazuh-alerts-*/_search"
+        url = f"{self.base_url}/{index}/_search"
         try:
             response = await self.client.post(
                 url, json=body, headers={"Content-Type": "application/json"}
@@ -416,6 +420,7 @@ class WazuhIndexerClient:
         self,
         time_range: str = "24h",
         min_frequency: int = 5,
+        index: str = ALERTS_INDEX,
     ) -> Dict[str, Any]:
         """
         Surface recurring alert patterns above a minimum frequency threshold.
@@ -446,7 +451,7 @@ class WazuhIndexerClient:
             },
         }
 
-        url = f"{self.base_url}/wazuh-alerts-*/_search"
+        url = f"{self.base_url}/{index}/_search"
         try:
             response = await self.client.post(
                 url, json=body, headers={"Content-Type": "application/json"}
@@ -487,6 +492,7 @@ class WazuhIndexerClient:
         query: str,
         time_range: str = "24h",
         limit: int = 100,
+        index: str = ALERTS_INDEX,
     ) -> Dict[str, Any]:
         """
         Full-text search across Wazuh alerts using a query string.
@@ -519,7 +525,7 @@ class WazuhIndexerClient:
             ],
         }
 
-        url = f"{self.base_url}/wazuh-alerts-*/_search"
+        url = f"{self.base_url}/{index}/_search"
         try:
             response = await self.client.post(
                 url, json=body, headers={"Content-Type": "application/json"}

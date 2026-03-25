@@ -169,7 +169,7 @@ class WazuhClient:
     # Alerts
     # -------------------------------------------------------------------------
 
-    async def get_alerts(self, limit: int = 100, agent_id: str = None, rule_id: str = None, level: str = None, **params) -> Dict[str, Any]:
+    async def get_alerts(self, limit: int = 100, agent_id: str = None, rule_id: str = None, level: str = None, index: str = "wazuh-alerts-*", **params) -> Dict[str, Any]:
         """Fetch alerts via Indexer (Manager API has no /alerts endpoint)."""
         indexer = self._require_indexer()
         result = await indexer.get_alerts(
@@ -177,6 +177,7 @@ class WazuhClient:
             agent_id=agent_id,
             rule_id=rule_id,
             level=level,
+            index=index,
         )
         # Normalize to Manager API format so tool handlers don't break
         return {
@@ -188,22 +189,22 @@ class WazuhClient:
             }
         }
 
-    async def get_alert_summary(self, time_range: str, group_by: str) -> Dict[str, Any]:
+    async def get_alert_summary(self, time_range: str, group_by: str, index: str = "wazuh-alerts-*") -> Dict[str, Any]:
         """Summarise alerts via Indexer aggregation."""
         return await self._require_indexer().get_alert_summary(
-            time_range=time_range, group_by=group_by
+            time_range=time_range, group_by=group_by, index=index
         )
 
-    async def analyze_alert_patterns(self, time_range: str, min_frequency: int) -> Dict[str, Any]:
+    async def analyze_alert_patterns(self, time_range: str, min_frequency: int, index: str = "wazuh-alerts-*") -> Dict[str, Any]:
         """Identify recurring alert patterns via Indexer."""
         return await self._require_indexer().analyze_alert_patterns(
-            time_range=time_range, min_frequency=min_frequency
+            time_range=time_range, min_frequency=min_frequency, index=index
         )
 
-    async def search_security_events(self, query: str, time_range: str, limit: int) -> Dict[str, Any]:
+    async def search_security_events(self, query: str, time_range: str, limit: int, index: str = "wazuh-alerts-*") -> Dict[str, Any]:
         """Full-text search across alerts via Indexer."""
         return await self._require_indexer().search_security_events(
-            query=query, time_range=time_range, limit=limit
+            query=query, time_range=time_range, limit=limit, index=index
         )
 
     # -------------------------------------------------------------------------
@@ -534,6 +535,7 @@ class WazuhClient:
         level: str = None,
         time_range: str = "24h",
         limit: int = 200,
+        index: str = "wazuh-alerts-*",
     ) -> Dict[str, Any]:
         """Correlate alerts and manager logs into a unified timeline."""
         now = datetime.now(timezone.utc)
@@ -557,6 +559,7 @@ class WazuhClient:
                 rule_id=rule_id,
                 level=level,
                 time_range=time_range,
+                index=index,
             )
             if self._indexer_client
             else asyncio.sleep(0)

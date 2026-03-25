@@ -68,3 +68,6 @@ MAINTAINER_MANUAL.md
 CLAUDE.md
 Caddyfile
 start_wazuh_mcp.sh
+threat-hunting-script.md
+wazuh_alerts_json.py
+

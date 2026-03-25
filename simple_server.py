@@ -139,6 +139,7 @@ async def get_wazuh_alerts(
     rule_id: Optional[str] = None,
     level: Optional[str] = None,
     agent_id: Optional[str] = None,
+    include_imports: bool = False,
 ) -> str:
     """Retrieve Wazuh security alerts.
 
@@ -147,8 +148,10 @@ async def get_wazuh_alerts(
         rule_id: Filter alerts by Wazuh rule ID.
         level: Filter alerts by severity level (e.g. "10" or "10-15" for a range).
         agent_id: Filter alerts by agent ID.
+        include_imports: Also search wazuh-import-* indices (imported historical logs).
     """
-    params: dict = {"limit": limit}
+    index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
+    params: dict = {"limit": limit, "index": index}
     if rule_id is not None:
         params["rule.id"] = rule_id
     if level is not None:
@@ -164,14 +167,17 @@ async def get_wazuh_alerts(
 async def get_wazuh_alert_summary(
     time_range: str = "24h",
     group_by: str = "rule.description",
+    include_imports: bool = False,
 ) -> str:
     """Get a summary of Wazuh alerts grouped by a field.
 
     Args:
         time_range: Time window to summarise (e.g. "1h", "24h", "7d").
         group_by: Field to group results by (default "rule.description").
+        include_imports: Also search wazuh-import-* indices (imported historical logs).
     """
-    result = await _client().get_alert_summary(time_range=time_range, group_by=group_by)
+    index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
+    result = await _client().get_alert_summary(time_range=time_range, group_by=group_by, index=index)
     return json.dumps(result, indent=2)
 
 
@@ -180,16 +186,20 @@ async def get_wazuh_alert_summary(
 async def analyze_alert_patterns(
     time_range: str = "24h",
     min_frequency: int = 5,
+    include_imports: bool = False,
 ) -> str:
     """Analyze recurring alert patterns to surface high-signal security events.
 
     Args:
         time_range: Time window to analyze (e.g. "1h", "24h", "7d").
         min_frequency: Minimum number of occurrences for a pattern to be included.
+        include_imports: Also search wazuh-import-* indices (imported historical logs).
     """
+    index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().analyze_alert_patterns(
         time_range=time_range,
         min_frequency=min_frequency,
+        index=index,
     )
     return json.dumps(result, indent=2)
 
@@ -200,6 +210,7 @@ async def search_security_events(
     query: str,
     time_range: str = "24h",
     limit: int = 100,
+    include_imports: bool = False,
 ) -> str:
     """Full-text search across Wazuh security events.
 
@@ -207,11 +218,14 @@ async def search_security_events(
         query: Search query string (supports Wazuh query syntax).
         time_range: Time window to search within (e.g. "1h", "24h", "7d").
         limit: Maximum number of results to return.
+        include_imports: Also search wazuh-import-* indices (imported historical logs).
     """
+    index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().search_security_events(
         query=query,
         time_range=time_range,
         limit=limit,
+        index=index,
     )
     return json.dumps(result, indent=2)
 
@@ -602,6 +616,7 @@ async def build_incident_timeline(
     level: Optional[str] = None,
     time_range: str = "24h",
     limit: int = 200,
+    include_imports: bool = False,
 ) -> str:
     """Build a unified incident timeline correlating alerts and manager logs.
 
@@ -616,7 +631,9 @@ async def build_incident_timeline(
         level: Filter by severity level (applied to both alerts and logs).
         time_range: Time window to cover ("1h", "6h", "24h", "7d").
         limit: Maximum total events in the returned timeline.
+        include_imports: Also search wazuh-import-* indices (imported historical logs).
     """
+    index = "wazuh-alerts-*,wazuh-import-*" if include_imports else "wazuh-alerts-*"
     result = await _client().build_incident_timeline(
         agent_id=agent_id,
         rule_id=rule_id,
@@ -624,6 +641,7 @@ async def build_incident_timeline(
         level=level,
         time_range=time_range,
         limit=limit,
+        index=index,
     )
     return json.dumps(result, indent=2)
 
@@ -675,7 +693,8 @@ async def run_opensearch_query(
     Args:
         body: OpenSearch query DSL as a JSON string.
         index: Index pattern to query (default: wazuh-alerts-*). Other useful
-               patterns: wazuh-states-vulnerabilities-*, wazuh-monitoring-*.
+               patterns: wazuh-import-* (imported historical logs),
+               wazuh-states-vulnerabilities-*, wazuh-monitoring-*.
         path_suffix: API path suffix — '_search' (default), '_count', '_mapping'.
     """
     c = _client()
