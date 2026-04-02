@@ -397,17 +397,21 @@ async def search_security_events(
     compact: bool = False,
     include_imports: bool = False,
 ) -> str:
-    """Full-text search across Wazuh security events.
+    """Search Wazuh alert rule descriptions, event data fields, AND syscheck/BAM
+    fields (executable names, file paths, registry paths).
 
     [Context cost: HIGH -- returns up to 500 matching event documents]
 
     When to use: You need to search alerts by keyword or phrase (e.g. "ssh AND
-    failed", "mimikatz", a specific IP). Always include a specific search term.
+    failed", "mimikatz", "COLIncrease", a specific IP). This tool now searches
+    across rule descriptions, Windows event data, syscheck/BAM executable names,
+    registry paths, and full_log text. Always include a specific search term.
     Use compact=True for initial investigation to save context.
 
     When NOT to use: For broad overview without a search term, use
-    get_wazuh_alert_summary or analyze_alert_patterns instead. Never use
-    broad/empty queries -- they return massive payloads.
+    get_wazuh_alert_summary or analyze_alert_patterns instead. For enumerating
+    ALL executables on a host (blind discovery without a known name), use
+    enumerate_host_executables instead.
 
     Args:
         query: Search query string (supports Lucene syntax, e.g. "ssh AND failed").
@@ -431,7 +435,7 @@ async def search_security_events(
     if compact:
         compacted = []
         for r in results_list:
-            compacted.append({
+            entry = {
                 "timestamp": r.get("timestamp"),
                 "rule_id": r.get("rule_id"),
                 "level": r.get("rule_level"),
@@ -439,7 +443,14 @@ async def search_security_events(
                 "agent": r.get("agent_name"),
                 "agent_id": r.get("agent_id"),
                 "src_ip": r.get("src_ip"),
-            })
+            }
+            if r.get("syscheck_value_name"):
+                entry["syscheck_value_name"] = r["syscheck_value_name"]
+            if r.get("syscheck_path"):
+                entry["syscheck_path"] = r["syscheck_path"]
+            if r.get("syscheck_event"):
+                entry["syscheck_event"] = r["syscheck_event"]
+            compacted.append(entry)
         result["results"] = compacted
         result["response_mode"] = "compact"
 
@@ -1019,13 +1030,16 @@ async def investigate_host(
     [Context cost: VERY HIGH -- runs 5 concurrent queries, returns large composite result]
 
     Builds a comprehensive picture of activity on a given agent/host covering:
-    severity distribution, high-severity events (level 7+), executables seen
-    via BAM/syscheck registry, registry changes, login activity (successes and
-    failures), top triggered rules, and a 6-hour activity timeline.
+    severity distribution, high-severity events (level 7+), executables run
+    on the host (via BAM/syscheck registry -- this is often the ONLY way to
+    find executable names like malware payloads, attack tools, and persistence
+    mechanisms in Wazuh data without Sysmon), registry changes, login activity
+    (successes and failures), top triggered rules, and a 6-hour activity timeline.
 
-    When to use: Only for deep-dive on a specific host AFTER initial triage
-    with get_wazuh_alert_summary or analyze_alert_patterns has identified it
-    as suspicious. Use compact=True to reduce payload.
+    When to use: Primarily for deep-dive on a specific host. Best used after
+    initial triage, but also valuable whenever you need executable/process
+    evidence (BAM registry data) that other tools cannot provide.
+    Use compact=True to reduce payload.
 
     When NOT to use: For broad exploration across all hosts. Use
     get_wazuh_alert_summary first, then investigate only flagged hosts.
@@ -1070,6 +1084,107 @@ async def investigate_host(
 
 @mcp.tool
 @with_usage_tracking
+async def enumerate_host_executables(
+    agent_name: str,
+    time_range: str = "7d",
+    include_imports: bool = False,
+) -> str:
+    """Enumerate all executables that ran on a host via BAM registry monitoring.
+
+    [Context cost: MEDIUM -- returns aggregated executable list, not raw alerts]
+
+    Use this tool to discover what programs ran on a specific host. Returns
+    a classified list of all executables from the Windows BAM (Background
+    Activity Moderator) registry, which records every .exe that runs.
+
+    When to use: After identifying a suspicious host during investigation,
+    use this to discover unknown/malicious executables. This is the PRIMARY
+    tool for finding malware names like COLIncrease.exe, DefenderRemover.exe,
+    mimikatz.exe, etc. that do NOT appear in rule descriptions or standard
+    alert fields.
+
+    When NOT to use: If you already know the executable name and just need
+    to search for it, use search_security_events (which now also searches
+    syscheck fields) or run_opensearch_query.
+
+    IMPORTANT: After finding suspicious (UNKNOWN) executables, cross-reference
+    them across ALL agents using search_security_events or run_opensearch_query
+    with a wildcard on syscheck.value_name.keyword to detect lateral spread.
+
+    Args:
+        agent_name: The agent hostname to enumerate (e.g., "npc-petyerbaeli").
+        time_range: Time window (e.g. "1h", "24h", "7d"). Default "7d".
+            Only applies to live wazuh-alerts-* data.
+        include_imports: Also search wazuh-import-* indices for historical data.
+            When True, the time_range filter is SKIPPED so all imported
+            historical data is included (e.g. GOAD lab data from Oct 2025).
+            Always set this to True for forensic/GOAD investigations.
+
+    Returns:
+        JSON with classified executable list. UNKNOWN executables are listed
+        first -- these are your investigation targets.
+    """
+    result = await _client().enumerate_host_executables(
+        agent_name=agent_name,
+        time_range=time_range,
+        include_imports=include_imports,
+    )
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool
+@with_usage_tracking
+async def compare_peer_executables(
+    agent_prefix: str,
+    time_range: str = "7d",
+    include_imports: bool = False,
+) -> str:
+    """Compare executable diversity across peer agents to find compromised hosts.
+
+    [Context cost: LOW -- returns aggregated comparison, not raw alerts]
+
+    Compares how many unique executables ran on each agent sharing the same
+    naming prefix (e.g., "npc-", "vdi-", "srv-"). Agents in the same peer
+    group should have similar executable profiles. An agent with significantly
+    more unique executables than its peers is likely compromised.
+
+    When to use: During investigation triage, BEFORE drilling into any
+    specific host. This identifies which host in a peer group is the outlier
+    and should be investigated with enumerate_host_executables. Implements
+    Heuristic 4 (peer comparison) from the investigation methodology.
+
+    When NOT to use: If you already know which host to investigate, skip
+    this and go directly to enumerate_host_executables.
+
+    Example: compare_peer_executables("npc-") might reveal that npc-petyerbaeli
+    has 34 unique executables while all other npc-* hosts have 9-10. That 3.5x
+    outlier is your investigation target.
+
+    Args:
+        agent_prefix: Naming prefix to define the peer group (e.g., "npc-",
+            "vdi-", "srv-"). All agents whose name starts with this prefix
+            are compared against each other.
+        time_range: Time window (e.g. "1h", "24h", "7d"). Default "7d".
+            Only applies to live wazuh-alerts-* data.
+        include_imports: Also search wazuh-import-* indices for historical data.
+            When True, the time_range filter is SKIPPED (same as
+            enumerate_host_executables). Always set True for GOAD forensics.
+
+    Returns:
+        JSON comparison showing each agent's unique executable count,
+        deviation from peers, and OUTLIER/ELEVATED/NORMAL status.
+        Includes a recommendation for which host to investigate next.
+    """
+    result = await _client().compare_peer_executables(
+        agent_prefix=agent_prefix,
+        time_range=time_range,
+        include_imports=include_imports,
+    )
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool
+@with_usage_tracking
 async def run_opensearch_query(
     body: str,
     index: str = "wazuh-alerts-*",
@@ -1093,6 +1208,12 @@ async def run_opensearch_query(
     When NOT to use: If get_wazuh_alerts, search_security_events,
     get_wazuh_alert_summary, or analyze_alert_patterns can answer your
     question, use those instead -- they have built-in guardrails.
+
+    IMPORTANT: For executable/IOC hunting, prefer enumerate_host_executables
+    (blind discovery) or search_security_events (targeted search) over crafting
+    raw DSL queries. Use run_opensearch_query only for custom aggregations,
+    complex bool queries, or field exploration (_mapping) that the other tools
+    cannot express.
 
     Args:
         body: OpenSearch query DSL as a JSON string.

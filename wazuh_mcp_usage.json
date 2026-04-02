@@ -1,9 +1,9 @@
 {
   "student_id": "user",
-  "session_start": "2026-03-25T18:46:23.848070+00:00",
-  "last_updated": "2026-03-25T20:19:29.666928+00:00",
-  "session_tokens": 67715,
-  "total_tokens": 888476,
+  "session_start": "2026-04-02T06:36:47.349237+00:00",
+  "last_updated": "2026-04-02T06:50:16.000561+00:00",
+  "session_tokens": 43924,
+  "total_tokens": 1114801,
   "soft_limit": 50000,
   "warn_threshold": 0.9,
   "calls": [
@@ -2046,6 +2046,1166 @@
       "output_tokens": 3795,
       "call_tokens": 4130,
       "session_running_total": 67715
+    },
+    {
+      "ts": "2026-03-25T22:43:04.810548+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 199,
+      "output_tokens": 1332,
+      "call_tokens": 1531,
+      "session_running_total": 1531
+    },
+    {
+      "ts": "2026-03-25T22:43:11.740047+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 218,
+      "output_tokens": 3154,
+      "call_tokens": 3372,
+      "session_running_total": 4903
+    },
+    {
+      "ts": "2026-03-25T22:43:18.626828+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 111,
+      "output_tokens": 271,
+      "call_tokens": 382,
+      "session_running_total": 5285
+    },
+    {
+      "ts": "2026-03-25T23:14:43.877712+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 18,
+      "output_tokens": 126,
+      "call_tokens": 144,
+      "session_running_total": 5429
+    },
+    {
+      "ts": "2026-03-25T23:15:07.493378+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 168,
+      "output_tokens": 1351,
+      "call_tokens": 1519,
+      "session_running_total": 6948
+    },
+    {
+      "ts": "2026-03-25T23:15:17.026589+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 330,
+      "output_tokens": 4565,
+      "call_tokens": 4895,
+      "session_running_total": 11843
+    },
+    {
+      "ts": "2026-03-25T23:17:17.246500+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 298,
+      "output_tokens": 7545,
+      "call_tokens": 7843,
+      "session_running_total": 19686
+    },
+    {
+      "ts": "2026-03-25T23:17:26.706667+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 291,
+      "output_tokens": 6295,
+      "call_tokens": 6586,
+      "session_running_total": 26272
+    },
+    {
+      "ts": "2026-03-25T23:17:39.384885+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 463,
+      "output_tokens": 5046,
+      "call_tokens": 5509,
+      "session_running_total": 31781
+    },
+    {
+      "ts": "2026-03-25T23:17:45.717073+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 183,
+      "output_tokens": 2288,
+      "call_tokens": 2471,
+      "session_running_total": 34252
+    },
+    {
+      "ts": "2026-03-25T23:19:43.417550+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 312,
+      "output_tokens": 4913,
+      "call_tokens": 5225,
+      "session_running_total": 39477
+    },
+    {
+      "ts": "2026-03-25T23:20:01.151863+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 208,
+      "output_tokens": 2933,
+      "call_tokens": 3141,
+      "session_running_total": 42618
+    },
+    {
+      "ts": "2026-03-26T15:45:09.270073+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 133,
+      "output_tokens": 1029,
+      "call_tokens": 1162,
+      "session_running_total": 43780
+    },
+    {
+      "ts": "2026-03-26T15:45:15.463490+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 142,
+      "output_tokens": 591,
+      "call_tokens": 733,
+      "session_running_total": 44513
+    },
+    {
+      "ts": "2026-03-26T15:45:22.193775+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 82,
+      "output_tokens": 62,
+      "call_tokens": 144,
+      "session_running_total": 44657
+    },
+    {
+      "ts": "2026-03-26T15:46:47.849744+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 245,
+      "output_tokens": 6296,
+      "call_tokens": 6541,
+      "session_running_total": 51198
+    },
+    {
+      "ts": "2026-03-26T15:46:58.837500+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 209,
+      "output_tokens": 3040,
+      "call_tokens": 3249,
+      "session_running_total": 54447
+    },
+    {
+      "ts": "2026-03-26T15:49:06.268097+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 185,
+      "output_tokens": 2281,
+      "call_tokens": 2466,
+      "session_running_total": 56913
+    },
+    {
+      "ts": "2026-03-26T15:49:17.773566+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 196,
+      "output_tokens": 2545,
+      "call_tokens": 2741,
+      "session_running_total": 59654
+    },
+    {
+      "ts": "2026-03-26T15:49:27.786924+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 147,
+      "output_tokens": 1374,
+      "call_tokens": 1521,
+      "session_running_total": 61175
+    },
+    {
+      "ts": "2026-03-26T15:49:49.111891+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 307,
+      "output_tokens": 2545,
+      "call_tokens": 2852,
+      "session_running_total": 64027
+    },
+    {
+      "ts": "2026-03-26T15:53:04.781395+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 266,
+      "output_tokens": 4414,
+      "call_tokens": 4680,
+      "session_running_total": 68707
+    },
+    {
+      "ts": "2026-03-26T15:53:16.618935+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 259,
+      "output_tokens": 6295,
+      "call_tokens": 6554,
+      "session_running_total": 75261
+    },
+    {
+      "ts": "2026-03-26T15:53:26.772643+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 272,
+      "output_tokens": 5045,
+      "call_tokens": 5317,
+      "session_running_total": 80578
+    },
+    {
+      "ts": "2026-03-26T15:53:41.288177+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 276,
+      "output_tokens": 3795,
+      "call_tokens": 4071,
+      "session_running_total": 84649
+    },
+    {
+      "ts": "2026-03-26T15:53:50.750696+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 346,
+      "output_tokens": 3795,
+      "call_tokens": 4141,
+      "session_running_total": 88790
+    },
+    {
+      "ts": "2026-03-26T15:54:07.849773+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 112,
+      "output_tokens": 794,
+      "call_tokens": 906,
+      "session_running_total": 89696
+    },
+    {
+      "ts": "2026-04-01T18:58:55.635748+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-04-01T18:59:34.899858+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 92,
+      "output_tokens": 3038,
+      "call_tokens": 3130,
+      "session_running_total": 3219
+    },
+    {
+      "ts": "2026-04-01T18:59:43.909033+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 102,
+      "output_tokens": 1284,
+      "call_tokens": 1386,
+      "session_running_total": 4605
+    },
+    {
+      "ts": "2026-04-01T18:59:52.562183+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 108,
+      "output_tokens": 397,
+      "call_tokens": 505,
+      "session_running_total": 5110
+    },
+    {
+      "ts": "2026-04-01T18:59:58.387519+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 102,
+      "output_tokens": 97,
+      "call_tokens": 199,
+      "session_running_total": 5309
+    },
+    {
+      "ts": "2026-04-01T19:00:06.917111+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 119,
+      "output_tokens": 278,
+      "call_tokens": 397,
+      "session_running_total": 5706
+    },
+    {
+      "ts": "2026-04-01T19:03:09.442507+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 96,
+      "output_tokens": 461,
+      "call_tokens": 557,
+      "session_running_total": 6263
+    },
+    {
+      "ts": "2026-04-01T19:03:15.625111+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 135,
+      "output_tokens": 321,
+      "call_tokens": 456,
+      "session_running_total": 6719
+    },
+    {
+      "ts": "2026-04-01T19:03:26.256842+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 157,
+      "output_tokens": 482,
+      "call_tokens": 639,
+      "session_running_total": 7358
+    },
+    {
+      "ts": "2026-04-01T19:03:33.258420+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 146,
+      "output_tokens": 61,
+      "call_tokens": 207,
+      "session_running_total": 7565
+    },
+    {
+      "ts": "2026-04-01T19:03:36.928957+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 7598
+    },
+    {
+      "ts": "2026-04-01T19:03:44.972428+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 148,
+      "output_tokens": 61,
+      "call_tokens": 209,
+      "session_running_total": 7807
+    },
+    {
+      "ts": "2026-04-01T19:03:50.777882+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 137,
+      "output_tokens": 61,
+      "call_tokens": 198,
+      "session_running_total": 8005
+    },
+    {
+      "ts": "2026-04-01T19:03:55.501862+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 124,
+      "output_tokens": 61,
+      "call_tokens": 185,
+      "session_running_total": 8190
+    },
+    {
+      "ts": "2026-04-01T19:04:02.150873+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 141,
+      "output_tokens": 61,
+      "call_tokens": 202,
+      "session_running_total": 8392
+    },
+    {
+      "ts": "2026-04-01T19:04:08.416547+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 140,
+      "output_tokens": 1406,
+      "call_tokens": 1546,
+      "session_running_total": 9938
+    },
+    {
+      "ts": "2026-04-01T19:04:17.067701+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 125,
+      "output_tokens": 61,
+      "call_tokens": 186,
+      "session_running_total": 10124
+    },
+    {
+      "ts": "2026-04-01T19:04:24.427272+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 134,
+      "output_tokens": 557,
+      "call_tokens": 691,
+      "session_running_total": 10815
+    },
+    {
+      "ts": "2026-04-01T19:04:43.254373+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 128,
+      "output_tokens": 61,
+      "call_tokens": 189,
+      "session_running_total": 11004
+    },
+    {
+      "ts": "2026-04-01T19:04:54.001711+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 117,
+      "output_tokens": 2228,
+      "call_tokens": 2345,
+      "session_running_total": 13349
+    },
+    {
+      "ts": "2026-04-01T19:05:02.662847+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 73,
+      "output_tokens": 138,
+      "call_tokens": 211,
+      "session_running_total": 13560
+    },
+    {
+      "ts": "2026-04-01T19:05:19.932535+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 148,
+      "output_tokens": 3182,
+      "call_tokens": 3330,
+      "session_running_total": 16890
+    },
+    {
+      "ts": "2026-04-01T20:03:51.656242+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 33
+    },
+    {
+      "ts": "2026-04-01T20:03:56.022635+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 26,
+      "output_tokens": 8,
+      "call_tokens": 34,
+      "session_running_total": 67
+    },
+    {
+      "ts": "2026-04-01T20:03:59.790848+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 24,
+      "output_tokens": 8,
+      "call_tokens": 32,
+      "session_running_total": 99
+    },
+    {
+      "ts": "2026-04-01T20:04:40.757274+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 19,
+      "output_tokens": 56,
+      "call_tokens": 75,
+      "session_running_total": 75
+    },
+    {
+      "ts": "2026-04-01T20:04:48.632855+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 102,
+      "output_tokens": 280,
+      "call_tokens": 382,
+      "session_running_total": 457
+    },
+    {
+      "ts": "2026-04-01T20:05:53.221394+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 490
+    },
+    {
+      "ts": "2026-04-01T20:06:01.990922+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 556,
+      "call_tokens": 581,
+      "session_running_total": 1071
+    },
+    {
+      "ts": "2026-04-01T20:06:12.754608+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 20,
+      "output_tokens": 2788,
+      "call_tokens": 2808,
+      "session_running_total": 3879
+    },
+    {
+      "ts": "2026-04-01T20:07:45.946405+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 556,
+      "call_tokens": 581,
+      "session_running_total": 4460
+    },
+    {
+      "ts": "2026-04-01T20:07:52.282243+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 26,
+      "output_tokens": 254,
+      "call_tokens": 280,
+      "session_running_total": 4740
+    },
+    {
+      "ts": "2026-04-01T20:07:59.580805+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 29,
+      "output_tokens": 1247,
+      "call_tokens": 1276,
+      "session_running_total": 6016
+    },
+    {
+      "ts": "2026-04-01T20:08:06.646341+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 119,
+      "output_tokens": 1025,
+      "call_tokens": 1144,
+      "session_running_total": 7160
+    },
+    {
+      "ts": "2026-04-01T20:08:14.502751+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 7193
+    },
+    {
+      "ts": "2026-04-01T20:08:22.126427+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 7226
+    },
+    {
+      "ts": "2026-04-01T20:08:29.037475+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 23,
+      "output_tokens": 1044,
+      "call_tokens": 1067,
+      "session_running_total": 8293
+    },
+    {
+      "ts": "2026-04-01T20:08:40.711220+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 8326
+    },
+    {
+      "ts": "2026-04-01T20:08:46.343893+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 8359
+    },
+    {
+      "ts": "2026-04-01T20:08:54.132703+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 24,
+      "output_tokens": 246,
+      "call_tokens": 270,
+      "session_running_total": 8629
+    },
+    {
+      "ts": "2026-04-01T20:09:04.266330+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 24,
+      "output_tokens": 1678,
+      "call_tokens": 1702,
+      "session_running_total": 10331
+    },
+    {
+      "ts": "2026-04-01T20:09:21.420616+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 134,
+      "output_tokens": 556,
+      "call_tokens": 690,
+      "session_running_total": 11021
+    },
+    {
+      "ts": "2026-04-01T20:09:39.387895+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 26,
+      "output_tokens": 1140,
+      "call_tokens": 1166,
+      "session_running_total": 12187
+    },
+    {
+      "ts": "2026-04-01T20:09:46.210421+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 120,
+      "output_tokens": 1707,
+      "call_tokens": 1827,
+      "session_running_total": 14014
+    },
+    {
+      "ts": "2026-04-01T20:10:17.323273+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 97,
+      "output_tokens": 1105,
+      "call_tokens": 1202,
+      "session_running_total": 15216
+    },
+    {
+      "ts": "2026-04-01T20:21:38.045382+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 5241,
+      "call_tokens": 5266,
+      "session_running_total": 20482
+    },
+    {
+      "ts": "2026-04-01T20:21:43.421008+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 141,
+      "output_tokens": 1343,
+      "call_tokens": 1484,
+      "session_running_total": 21966
+    },
+    {
+      "ts": "2026-04-01T20:28:39.512856+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 95,
+      "output_tokens": 1089,
+      "call_tokens": 1184,
+      "session_running_total": 23150
+    },
+    {
+      "ts": "2026-04-01T20:28:49.605523+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 72,
+      "output_tokens": 747,
+      "call_tokens": 819,
+      "session_running_total": 23969
+    },
+    {
+      "ts": "2026-04-01T20:28:56.717210+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 228,
+      "output_tokens": 226,
+      "call_tokens": 454,
+      "session_running_total": 24423
+    },
+    {
+      "ts": "2026-04-01T20:29:03.942108+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 54,
+      "output_tokens": 304,
+      "call_tokens": 358,
+      "session_running_total": 24781
+    },
+    {
+      "ts": "2026-04-01T20:29:12.374991+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 159,
+      "output_tokens": 127,
+      "call_tokens": 286,
+      "session_running_total": 25067
+    },
+    {
+      "ts": "2026-04-01T20:29:22.929921+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 222,
+      "output_tokens": 177,
+      "call_tokens": 399,
+      "session_running_total": 25466
+    },
+    {
+      "ts": "2026-04-01T20:29:32.026802+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 82,
+      "output_tokens": 706,
+      "call_tokens": 788,
+      "session_running_total": 26254
+    },
+    {
+      "ts": "2026-04-01T20:29:43.511600+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 99,
+      "output_tokens": 369,
+      "call_tokens": 468,
+      "session_running_total": 26722
+    },
+    {
+      "ts": "2026-04-01T20:39:30.702319+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 8,
+      "call_tokens": 33,
+      "session_running_total": 26755
+    },
+    {
+      "ts": "2026-04-01T20:40:02.421561+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 556,
+      "call_tokens": 581,
+      "session_running_total": 27336
+    },
+    {
+      "ts": "2026-04-01T20:43:15.316770+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 19,
+      "output_tokens": 2788,
+      "call_tokens": 2807,
+      "session_running_total": 2807
+    },
+    {
+      "ts": "2026-04-01T20:44:26.121331+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 160,
+      "output_tokens": 1626,
+      "call_tokens": 1786,
+      "session_running_total": 4593
+    },
+    {
+      "ts": "2026-04-01T21:03:23.835428+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-04-01T21:03:34.841733+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 583,
+      "call_tokens": 602,
+      "session_running_total": 691
+    },
+    {
+      "ts": "2026-04-01T21:03:46.341564+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 67,
+      "output_tokens": 976,
+      "call_tokens": 1043,
+      "session_running_total": 1734
+    },
+    {
+      "ts": "2026-04-01T21:04:36.407725+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 1823
+    },
+    {
+      "ts": "2026-04-01T21:04:54.508217+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 18,
+      "output_tokens": 126,
+      "call_tokens": 144,
+      "session_running_total": 1967
+    },
+    {
+      "ts": "2026-04-01T21:05:02.312035+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 67,
+      "output_tokens": 976,
+      "call_tokens": 1043,
+      "session_running_total": 3010
+    },
+    {
+      "ts": "2026-04-01T21:05:27.285104+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 68,
+      "output_tokens": 496,
+      "call_tokens": 564,
+      "session_running_total": 3574
+    },
+    {
+      "ts": "2026-04-01T21:08:03.910115+00:00",
+      "tool": "compare_peer_executables",
+      "input_tokens": 17,
+      "output_tokens": 894,
+      "call_tokens": 911,
+      "session_running_total": 4485
+    },
+    {
+      "ts": "2026-04-01T21:08:40.460052+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 19,
+      "output_tokens": 2788,
+      "call_tokens": 2807,
+      "session_running_total": 7292
+    },
+    {
+      "ts": "2026-04-01T21:09:35.501924+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 158,
+      "output_tokens": 1912,
+      "call_tokens": 2070,
+      "session_running_total": 9362
+    },
+    {
+      "ts": "2026-04-01T21:09:54.105517+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 116,
+      "output_tokens": 152,
+      "call_tokens": 268,
+      "session_running_total": 9630
+    },
+    {
+      "ts": "2026-04-01T21:10:38.378379+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 91,
+      "output_tokens": 2892,
+      "call_tokens": 2983,
+      "session_running_total": 12613
+    },
+    {
+      "ts": "2026-04-01T21:10:48.850454+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 116,
+      "output_tokens": 1343,
+      "call_tokens": 1459,
+      "session_running_total": 14072
+    },
+    {
+      "ts": "2026-04-01T21:13:13.906689+00:00",
+      "tool": "compare_peer_executables",
+      "input_tokens": 17,
+      "output_tokens": 894,
+      "call_tokens": 911,
+      "session_running_total": 14983
+    },
+    {
+      "ts": "2026-04-01T21:13:26.746923+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 19,
+      "output_tokens": 2788,
+      "call_tokens": 2807,
+      "session_running_total": 17790
+    },
+    {
+      "ts": "2026-04-01T21:13:49.783325+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 32,
+      "output_tokens": 138,
+      "call_tokens": 170,
+      "session_running_total": 17960
+    },
+    {
+      "ts": "2026-04-01T21:13:55.857745+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 139,
+      "output_tokens": 462,
+      "call_tokens": 601,
+      "session_running_total": 18561
+    },
+    {
+      "ts": "2026-04-01T21:27:35.404075+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-04-01T21:27:50.971791+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 583,
+      "call_tokens": 602,
+      "session_running_total": 691
+    },
+    {
+      "ts": "2026-04-01T21:28:02.404740+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 68,
+      "output_tokens": 1671,
+      "call_tokens": 1739,
+      "session_running_total": 2430
+    },
+    {
+      "ts": "2026-04-01T21:28:16.887771+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 53,
+      "output_tokens": 624,
+      "call_tokens": 677,
+      "session_running_total": 3107
+    },
+    {
+      "ts": "2026-04-01T21:28:30.598754+00:00",
+      "tool": "compare_peer_executables",
+      "input_tokens": 17,
+      "output_tokens": 894,
+      "call_tokens": 911,
+      "session_running_total": 4018
+    },
+    {
+      "ts": "2026-04-01T21:28:44.560772+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 19,
+      "output_tokens": 2788,
+      "call_tokens": 2807,
+      "session_running_total": 6825
+    },
+    {
+      "ts": "2026-04-01T21:29:09.723710+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 158,
+      "output_tokens": 1912,
+      "call_tokens": 2070,
+      "session_running_total": 8895
+    },
+    {
+      "ts": "2026-04-01T21:29:20.228436+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 112,
+      "output_tokens": 840,
+      "call_tokens": 952,
+      "session_running_total": 9847
+    },
+    {
+      "ts": "2026-04-01T21:29:35.361281+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 110,
+      "output_tokens": 3714,
+      "call_tokens": 3824,
+      "session_running_total": 13671
+    },
+    {
+      "ts": "2026-04-01T21:29:59.560874+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 117,
+      "output_tokens": 1574,
+      "call_tokens": 1691,
+      "session_running_total": 15362
+    },
+    {
+      "ts": "2026-04-01T21:30:24.339972+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 24,
+      "output_tokens": 15,
+      "call_tokens": 39,
+      "session_running_total": 15401
+    },
+    {
+      "ts": "2026-04-01T21:30:29.825891+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 123,
+      "output_tokens": 2121,
+      "call_tokens": 2244,
+      "session_running_total": 17645
+    },
+    {
+      "ts": "2026-04-01T21:30:55.501522+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 126,
+      "output_tokens": 1433,
+      "call_tokens": 1559,
+      "session_running_total": 19204
+    },
+    {
+      "ts": "2026-04-01T21:31:05.185770+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 135,
+      "output_tokens": 61,
+      "call_tokens": 196,
+      "session_running_total": 19400
+    },
+    {
+      "ts": "2026-04-01T21:31:32.408903+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 127,
+      "output_tokens": 616,
+      "call_tokens": 743,
+      "session_running_total": 20143
+    },
+    {
+      "ts": "2026-04-01T21:33:29.138737+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 127,
+      "output_tokens": 560,
+      "call_tokens": 687,
+      "session_running_total": 20830
+    },
+    {
+      "ts": "2026-04-01T21:33:35.613166+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 123,
+      "output_tokens": 877,
+      "call_tokens": 1000,
+      "session_running_total": 21830
+    },
+    {
+      "ts": "2026-04-01T21:33:48.221183+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 123,
+      "output_tokens": 3273,
+      "call_tokens": 3396,
+      "session_running_total": 25226
+    },
+    {
+      "ts": "2026-04-02T06:37:22.754775+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 89
+    },
+    {
+      "ts": "2026-04-02T06:37:29.836720+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 583,
+      "call_tokens": 602,
+      "session_running_total": 691
+    },
+    {
+      "ts": "2026-04-02T06:37:37.318460+00:00",
+      "tool": "get_wazuh_agents",
+      "input_tokens": 12,
+      "output_tokens": 248,
+      "call_tokens": 260,
+      "session_running_total": 951
+    },
+    {
+      "ts": "2026-04-02T06:37:47.374819+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 32,
+      "output_tokens": 3613,
+      "call_tokens": 3645,
+      "session_running_total": 4596
+    },
+    {
+      "ts": "2026-04-02T06:38:00.428647+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 23,
+      "output_tokens": 6970,
+      "call_tokens": 6993,
+      "session_running_total": 11589
+    },
+    {
+      "ts": "2026-04-02T06:38:14.068771+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 23,
+      "output_tokens": 2949,
+      "call_tokens": 2972,
+      "session_running_total": 14561
+    },
+    {
+      "ts": "2026-04-02T06:38:31.179090+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 26,
+      "output_tokens": 1387,
+      "call_tokens": 1413,
+      "session_running_total": 15974
+    },
+    {
+      "ts": "2026-04-02T06:38:37.331149+00:00",
+      "tool": "get_wazuh_alerts",
+      "input_tokens": 32,
+      "output_tokens": 14184,
+      "call_tokens": 14216,
+      "session_running_total": 30190
+    },
+    {
+      "ts": "2026-04-02T06:46:04.313810+00:00",
+      "tool": "validate_wazuh_connection",
+      "input_tokens": 1,
+      "output_tokens": 88,
+      "call_tokens": 89,
+      "session_running_total": 30279
+    },
+    {
+      "ts": "2026-04-02T06:46:12.656717+00:00",
+      "tool": "get_wazuh_alert_summary",
+      "input_tokens": 19,
+      "output_tokens": 521,
+      "call_tokens": 540,
+      "session_running_total": 30819
+    },
+    {
+      "ts": "2026-04-02T06:46:23.726135+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 68,
+      "output_tokens": 1671,
+      "call_tokens": 1739,
+      "session_running_total": 32558
+    },
+    {
+      "ts": "2026-04-02T06:46:46.479639+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 103,
+      "output_tokens": 3040,
+      "call_tokens": 3143,
+      "session_running_total": 35701
+    },
+    {
+      "ts": "2026-04-02T06:47:08.316211+00:00",
+      "tool": "compare_peer_executables",
+      "input_tokens": 17,
+      "output_tokens": 894,
+      "call_tokens": 911,
+      "session_running_total": 36612
+    },
+    {
+      "ts": "2026-04-02T06:47:24.979159+00:00",
+      "tool": "enumerate_host_executables",
+      "input_tokens": 19,
+      "output_tokens": 2788,
+      "call_tokens": 2807,
+      "session_running_total": 39419
+    },
+    {
+      "ts": "2026-04-02T06:48:03.507977+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 24,
+      "output_tokens": 15,
+      "call_tokens": 39,
+      "session_running_total": 39458
+    },
+    {
+      "ts": "2026-04-02T06:48:05.848393+00:00",
+      "tool": "search_security_events",
+      "input_tokens": 25,
+      "output_tokens": 15,
+      "call_tokens": 40,
+      "session_running_total": 39498
+    },
+    {
+      "ts": "2026-04-02T06:48:11.791607+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 77,
+      "output_tokens": 348,
+      "call_tokens": 425,
+      "session_running_total": 39923
+    },
+    {
+      "ts": "2026-04-02T06:48:35.949390+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 76,
+      "output_tokens": 205,
+      "call_tokens": 281,
+      "session_running_total": 40204
+    },
+    {
+      "ts": "2026-04-02T06:48:48.500876+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 113,
+      "output_tokens": 995,
+      "call_tokens": 1108,
+      "session_running_total": 41312
+    },
+    {
+      "ts": "2026-04-02T06:49:15.558939+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 139,
+      "output_tokens": 152,
+      "call_tokens": 291,
+      "session_running_total": 41603
+    },
+    {
+      "ts": "2026-04-02T06:49:24.831237+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 89,
+      "output_tokens": 289,
+      "call_tokens": 378,
+      "session_running_total": 41981
+    },
+    {
+      "ts": "2026-04-02T06:50:03.005538+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 138,
+      "output_tokens": 1294,
+      "call_tokens": 1432,
+      "session_running_total": 43413
+    },
+    {
+      "ts": "2026-04-02T06:50:11.908030+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 89,
+      "output_tokens": 167,
+      "call_tokens": 256,
+      "session_running_total": 43669
+    },
+    {
+      "ts": "2026-04-02T06:50:16.000549+00:00",
+      "tool": "run_opensearch_query",
+      "input_tokens": 89,
+      "output_tokens": 166,
+      "call_tokens": 255,
+      "session_running_total": 43924
     }
   ]
 }

@@ -208,6 +208,18 @@ class WazuhClient:
             query=query, time_range=time_range, limit=limit, index=index
         )
 
+    async def enumerate_host_executables(self, agent_name: str, time_range: str = "7d", include_imports: bool = False) -> Dict[str, Any]:
+        """Enumerate all executables that ran on a host via BAM registry entries."""
+        return await self._require_indexer().enumerate_host_executables(
+            agent_name=agent_name, time_range=time_range, include_imports=include_imports
+        )
+
+    async def compare_peer_executables(self, agent_prefix: str, time_range: str = "7d", include_imports: bool = False) -> Dict[str, Any]:
+        """Compare executable diversity across peer agents to find outliers."""
+        return await self._require_indexer().compare_peer_executables(
+            agent_prefix=agent_prefix, time_range=time_range, include_imports=include_imports
+        )
+
     # -------------------------------------------------------------------------
     # Agents
     # -------------------------------------------------------------------------

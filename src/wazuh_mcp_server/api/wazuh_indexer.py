@@ -10,6 +10,7 @@ index directly.
 """
 
 import logging
+import statistics
 from typing import Dict, Any, Optional
 import httpx
 
@@ -511,7 +512,25 @@ class WazuhIndexerClient:
             "size": limit,
             "query": {
                 "bool": {
-                    "must": [{"query_string": {"query": query, "default_field": "*"}}],
+                    "must": [{
+                        "bool": {
+                            "should": [
+                                {"query_string": {
+                                    "query": query,
+                                    "fields": [
+                                        "rule.description", "rule.id", "rule.groups",
+                                        "agent.name", "agent.id",
+                                        "data.srcip", "data.win.eventdata.*",
+                                        "full_log",
+                                        "syscheck.value_name", "syscheck.path",
+                                    ],
+                                }},
+                                {"wildcard": {"syscheck.value_name.keyword": f"*{query}*"}},
+                                {"wildcard": {"syscheck.path.keyword": f"*{query}*"}},
+                            ],
+                            "minimum_should_match": 1,
+                        }
+                    }],
                     "filter": [
                         {"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}}
                     ],
@@ -522,6 +541,8 @@ class WazuhIndexerClient:
                 "@timestamp", "rule.id", "rule.description", "rule.level",
                 "rule.groups", "agent.id", "agent.name", "data.srcip",
                 "full_log",
+                "syscheck.value_name", "syscheck.path", "syscheck.event",
+                "syscheck.md5_after",
             ],
         }
 
@@ -533,7 +554,18 @@ class WazuhIndexerClient:
             response.raise_for_status()
             result = response.json()
         except httpx.HTTPStatusError as e:
-            raise ValueError(f"Security event search failed: {e.response.status_code} - {e.response.text}")
+            error_text = e.response.text
+            if "too_many_nested_clauses" in error_text or "too_many_clauses" in error_text:
+                return {
+                    "total": 0,
+                    "results": [],
+                    "error": (
+                        "Query too broad for the selected time range/indices. "
+                        "Try narrowing: use a shorter time_range (e.g. '7d' instead of '365d'), "
+                        "disable include_imports, or use a more specific query term."
+                    ),
+                }
+            raise ValueError(f"Security event search failed: {e.response.status_code} - {error_text}")
         except httpx.ConnectError:
             raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
 
@@ -554,9 +586,278 @@ class WazuhIndexerClient:
                 "agent_name":       src.get("agent", {}).get("name"),
                 "src_ip":           src.get("data", {}).get("srcip"),
                 "full_log":         (src.get("full_log") or "")[:500],
+                "syscheck_value_name": src.get("syscheck", {}).get("value_name"),
+                "syscheck_path":       src.get("syscheck", {}).get("path"),
+                "syscheck_event":      src.get("syscheck", {}).get("event"),
             })
 
         return {"total": total, "results": results}
+
+    # ------------------------------------------------------------------
+    # Executable enumeration (BAM registry)
+    # ------------------------------------------------------------------
+
+    _CLASSIFICATION_ORDER = {"UNKNOWN": 0, "KNOWN_ADMIN_TOOL": 1, "KNOWN_APPLICATION": 2, "KNOWN_WINDOWS": 3}
+
+    _ADMIN_TOOL_PATTERNS = [
+        "psexec", "mimikatz", "rubeus", "sharphound", "bloodhound",
+        "cobalt", "procdump", "procmon", "procexp", "autoruns",
+        "accesschk", "handle", "listdlls", "tcpview",
+    ]
+
+    def _classify_executable(self, path: str) -> str:
+        """Classify an executable path into a known category."""
+        lower = path.lower()
+        # Known Windows system binaries
+        if any(seg in lower for seg in [
+            "\\windows\\system32\\", "\\windows\\syswow64\\",
+            "\\windows\\explorer.exe", "\\windows\\regedit.exe",
+        ]):
+            return "KNOWN_WINDOWS"
+        # Known admin / pentesting tools
+        for pattern in self._ADMIN_TOOL_PATTERNS:
+            if pattern in lower:
+                return "KNOWN_ADMIN_TOOL"
+        # Known installed applications
+        if "\\program files\\" in lower or "\\program files (x86)\\" in lower:
+            return "KNOWN_APPLICATION"
+        return "UNKNOWN"
+
+    async def enumerate_host_executables(
+        self,
+        agent_name: str,
+        time_range: str = "7d",
+        include_imports: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Enumerate all executables that ran on a host via BAM registry entries.
+
+        Queries syscheck.value_name for BAM executable paths
+        (\\Device\\HarddiskVolume...) and aggregates by executable path,
+        returning counts and the user SID from the registry path.
+        """
+        await self._ensure_initialized()
+
+        index = f"{ALERTS_INDEX},{IMPORT_INDEX}" if include_imports else ALERTS_INDEX
+
+        filters = [
+            {"term": {"agent.name.keyword": agent_name}},
+            {"wildcard": {"syscheck.value_name.keyword": "\\\\Device\\\\HarddiskVolume*"}},
+        ]
+        # When searching imports, skip time filter -- imported data has a
+        # fixed historical window that would be missed by a recent-only range.
+        if not include_imports:
+            filters.append({"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}})
+
+        body = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": filters,
+                }
+            },
+            "aggs": {
+                "executables": {
+                    "terms": {"field": "syscheck.value_name.keyword", "size": 100},
+                    "aggs": {
+                        "user_path": {"terms": {"field": "syscheck.path.keyword", "size": 1}},
+                        "first_seen": {"min": {"field": "@timestamp"}},
+                        "last_seen": {"max": {"field": "@timestamp"}},
+                    },
+                }
+            },
+        }
+
+        url = f"{self.base_url}/{index}/_search"
+        try:
+            response = await self.client.post(
+                url, json=body, headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
+            result = response.json()
+        except httpx.HTTPStatusError as e:
+            raise ValueError(f"Executable enumeration failed: {e.response.status_code} - {e.response.text}")
+        except httpx.ConnectError:
+            raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
+
+        total_bam_entries = result.get("hits", {}).get("total", {})
+        total_bam_entries = total_bam_entries.get("value", 0) if isinstance(total_bam_entries, dict) else total_bam_entries
+
+        buckets = result.get("aggregations", {}).get("executables", {}).get("buckets", [])
+
+        executables = []
+        summary: Dict[str, int] = {"UNKNOWN": 0, "KNOWN_WINDOWS": 0, "KNOWN_APPLICATION": 0, "KNOWN_ADMIN_TOOL": 0}
+
+        for bucket in buckets:
+            path = bucket["key"]
+            classification = self._classify_executable(path)
+            summary[classification] = summary.get(classification, 0) + 1
+
+            # Extract user SID from registry path sub-agg
+            user_path_buckets = bucket.get("user_path", {}).get("buckets", [])
+            user_sid = ""
+            if user_path_buckets:
+                reg_path = user_path_buckets[0].get("key", "")
+                # SID is the last path component: ...\UserSettings\S-1-5-21-...-1123
+                parts = reg_path.replace("/", "\\").split("\\")
+                for part in reversed(parts):
+                    if part.startswith("S-1-"):
+                        user_sid = part
+                        break
+
+            executables.append({
+                "path": path,
+                "count": bucket["doc_count"],
+                "classification": classification,
+                "user_sid": user_sid,
+                "first_seen": bucket.get("first_seen", {}).get("value_as_string"),
+                "last_seen": bucket.get("last_seen", {}).get("value_as_string"),
+            })
+
+        # Sort: UNKNOWN first (count desc), then KNOWN_ADMIN_TOOL, then others
+        executables.sort(key=lambda e: (
+            self._CLASSIFICATION_ORDER.get(e["classification"], 99),
+            -e["count"],
+        ))
+
+        return {
+            "agent_name": agent_name,
+            "total_executables": len(executables),
+            "total_bam_entries": total_bam_entries,
+            "executables": executables,
+            "summary": summary,
+        }
+
+    async def compare_peer_executables(
+        self,
+        agent_prefix: str,
+        time_range: str = "7d",
+        include_imports: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Compare executable diversity across peer agents (same naming prefix)
+        to identify outliers that may be compromised.
+        """
+        await self._ensure_initialized()
+
+        index = f"{ALERTS_INDEX},{IMPORT_INDEX}" if include_imports else ALERTS_INDEX
+
+        filters = [
+            {"prefix": {"agent.name.keyword": agent_prefix}},
+            {"wildcard": {"syscheck.value_name.keyword": "\\\\Device\\\\HarddiskVolume*"}},
+        ]
+        if not include_imports:
+            filters.append({"range": {"@timestamp": {"gte": self._time_range_to_ms(time_range)}}})
+
+        body = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": filters,
+                }
+            },
+            "aggs": {
+                "by_agent": {
+                    "terms": {"field": "agent.name.keyword", "size": 50},
+                    "aggs": {
+                        "exe_count": {"cardinality": {"field": "syscheck.value_name.keyword"}},
+                        "total_entries": {"value_count": {"field": "syscheck.value_name.keyword"}},
+                        "sample_exes": {"terms": {"field": "syscheck.value_name.keyword", "size": 5}},
+                    },
+                }
+            },
+        }
+
+        url = f"{self.base_url}/{index}/_search"
+        try:
+            response = await self.client.post(
+                url, json=body, headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
+            result = response.json()
+        except httpx.HTTPStatusError as e:
+            raise ValueError(f"Peer comparison failed: {e.response.status_code} - {e.response.text}")
+        except httpx.ConnectError:
+            raise ConnectionError(f"Cannot connect to Wazuh Indexer at {self.host}:{self.port}")
+
+        buckets = result.get("aggregations", {}).get("by_agent", {}).get("buckets", [])
+
+        if not buckets:
+            return {
+                "prefix": agent_prefix,
+                "total_agents": 0,
+                "median_exe_count": 0,
+                "stddev": 0,
+                "outlier_threshold": 0,
+                "agents": [],
+                "recommendation": f"No agents found matching prefix '{agent_prefix}'.",
+            }
+
+        # Collect unique counts for stats
+        unique_counts = [
+            b.get("exe_count", {}).get("value", 0) for b in buckets
+        ]
+        med = statistics.median(unique_counts)
+        sd = statistics.stdev(unique_counts) if len(unique_counts) >= 2 else 0.0
+        outlier_threshold = med + 2 * sd
+        elevated_threshold = med + sd
+
+        _STATUS_ORDER = {"OUTLIER": 0, "ELEVATED": 1, "NORMAL": 2}
+
+        agents = []
+        for b in buckets:
+            unique = b.get("exe_count", {}).get("value", 0)
+            total = b.get("total_entries", {}).get("value", 0)
+            deviation = unique - med
+
+            if sd > 0 and unique > outlier_threshold:
+                status = "OUTLIER"
+            elif sd > 0 and unique > elevated_threshold:
+                status = "ELEVATED"
+            else:
+                status = "NORMAL"
+
+            sample_exes = [
+                s["key"] for s in b.get("sample_exes", {}).get("buckets", [])
+            ]
+
+            agents.append({
+                "agent_name": b["key"],
+                "unique_executables": unique,
+                "total_bam_entries": total,
+                "status": status,
+                "deviation_factor": deviation,
+                "sample_executables": sample_exes,
+            })
+
+        agents.sort(key=lambda a: (_STATUS_ORDER.get(a["status"], 99), -a["unique_executables"]))
+
+        # Build recommendation
+        outliers = [a for a in agents if a["status"] == "OUTLIER"]
+        if outliers:
+            names = ", ".join(a["agent_name"] for a in outliers)
+            counts = ", ".join(str(a["unique_executables"]) for a in outliers)
+            recommendation = (
+                f"{names} {'is an' if len(outliers) == 1 else 'are'} significant "
+                f"outlier{'s' if len(outliers) > 1 else ''} with {counts} unique "
+                f"executables vs peer median of {med:.0f}. "
+                f"Investigate with enumerate_host_executables."
+            )
+        else:
+            recommendation = (
+                f"No outliers detected in the {agent_prefix} peer group. "
+                f"All agents have similar executable profiles."
+            )
+
+        return {
+            "prefix": agent_prefix,
+            "total_agents": len(agents),
+            "median_exe_count": med,
+            "stddev": round(sd, 2),
+            "outlier_threshold": round(outlier_threshold, 2),
+            "agents": agents,
+            "recommendation": recommendation,
+        }
 
     async def investigate_host(
         self,
